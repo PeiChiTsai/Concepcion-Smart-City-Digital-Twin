@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Twin Demo</title>
+  <style>
+    /* 清除預設邊距，確保全螢幕滿版 */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+    }
+    #viewer {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+  <!-- 請確保路徑符合你的專案結構 -->
+  <script type="module" src="/src/main.ts"></script> 
+</body>
+</html>
