@@ -367,7 +367,12 @@ export const TelluxMap: React.FC = () => {
             if (targetReport) {
               setPopupReport({
                 text: targetReport.text || "無詳細內容",
-                time: targetReport.time || "未知時間"
+                time: targetReport.time || "未知時間",
+                category: targetReport.category,
+                isUrgentPolice: targetReport.isUrgentPolice,
+                name: targetReport.name,
+                phone: targetReport.phone,
+                email: targetReport.email
               })
 
               setPopupFeature(null)
