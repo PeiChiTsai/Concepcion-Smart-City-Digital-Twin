@@ -5,7 +5,7 @@ import GovDashboard from './pages/GovDashboard'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {/* 最外層加上 Flex 排版，讓它佔滿整個畫面 */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
         
