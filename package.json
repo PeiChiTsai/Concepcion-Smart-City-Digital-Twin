@@ -19,6 +19,7 @@
     "@takram/three-geospatial": "^0.9.1",
     "@takram/three-geospatial-effects": "^0.6.4",
     "3d-tiles-renderer": "^0.4.28",
+    "cesium": "^1.145.0",
     "pbf": "^5.1.2",
     "postprocessing": "^6.39.5",
     "react": "^19.3.0",

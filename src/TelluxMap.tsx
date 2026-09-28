@@ -1,11 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
 import tellux from 'tellux'
+import * as Cesium from 'cesium'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
-const OSM_ASSET_ID = "96188"
+//OSM_ASSET_ID = 96188
+//Concepcion_3D_Tiles = 5950827
+const OSM_ASSET_ID = 5950827
+//Google_Maps_2D_Roadmap = 3830184
+//GOOGLE_MAPS_2D_SATELLITE_ASSET_ID = 3830182
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
+const GOOGLE_MAPS_2D_SATELLITE_ASSET_ID = 3830182
 
+// ...exist
 const CAMERA_VIEW = {
   latitude: -36.827063,
   longitude: -73.050201,
@@ -42,8 +49,15 @@ export const TelluxMap: React.FC = () => {
   const [popupFeature, setPopupFeature] =
     useState<Picked3DTilesFeature | null>(null)
 
-  const [popupReport, setPopupReport] =
-    useState<{ text: string, time: string } | null>(null)
+  const [popupReport, setPopupReport] = useState<{
+    text: string
+    time: string
+    category?: string
+    isUrgentPolice?: boolean
+    name?: string
+    phone?: string
+    email?: string
+  } | null>(null)
 
   useEffect(() => {
     let viewer: any = null
@@ -58,7 +72,7 @@ export const TelluxMap: React.FC = () => {
 
       try {
         viewer = await tellux.Viewer.create(containerRef.current, {
-          renderer: { type: "webgpu" },
+          renderer: { type: "webgl" },
 
           camera: {
             destination: {
@@ -133,19 +147,47 @@ export const TelluxMap: React.FC = () => {
             isUpdating = false
           })
         }
-        
-        if (ION_TOKEN) {
-          // 載入 Google 底圖
-          viewer.tilesets.add({
+
+
+        if (ION_TOKEN && ION_TOKEN !== "填入你的Token") {
+          // 載入 Cesium World Terrain（ion asset ID: 1）
+          viewer.terrain.set({
+            type: "cesium-ion",
+            assetId: 1,
+            apiToken: ION_TOKEN
+          })
+
+          // Google Maps 2D Satellite 影像圖層
+          viewer.overlays.add({
+            id: "google-maps-2d-satellite",
+            name: "Google Maps 2D Satellite",
             source: {
               type: "cesium-ion",
-              assetId: GOOGLE_PHOTOREALISTIC_ASSET_ID,
+              assetId: GOOGLE_MAPS_2D_SATELLITE_ASSET_ID,
               apiToken: ION_TOKEN
-            },
-
-            id: "google-photorealistic-3d-tiles",
-            creasedNormals: true,
+            }
           })
+
+
+
+
+          // // 載入 Google 底圖
+          // viewer.tilesets.add({
+          //   source: {
+          //     type: "cesium-ion",
+          //     assetId: GOOGLE_PHOTOREALISTIC_ASSET_ID,
+          //     apiToken: ION_TOKEN
+          //   },
+
+          //   id: "google-photorealistic-3d-tiles",
+          //   creasedNormals: true,
+          // })
+
+
+
+
+
+
 
           // 載入 OSM 建築
           const osmLayer = viewer.tilesets.add({
@@ -156,6 +198,8 @@ export const TelluxMap: React.FC = () => {
             },
 
             id: "osm-buildings",
+            materialMode: "preserved",
+            creasedNormals: true,
           })
 
           ;(osmLayer.tileset as any).addEventListener(
@@ -164,11 +208,11 @@ export const TelluxMap: React.FC = () => {
               event.scene.traverse((child: any) => {
                 if (child.isMesh && child.material) {
                   child.material.color.set('#ff0101')
-                  child.material.transparent = true
+                  child.material.transparent = false
                   child.material.opacity = 1
-                  child.material.depthWrite = false
-                  child.material.depthTest = false
-                  child.renderOrder = 999
+                  // child.material.depthWrite = false
+                  // child.material.depthTest = false
+                  // child.renderOrder = 999
                   child.material.needsUpdate = true
                 }
               })
@@ -181,33 +225,40 @@ export const TelluxMap: React.FC = () => {
           localStorage.getItem('reports') || '[]'
         )
 
+
         reports.forEach((report: any) => {
+          const lon = Number(report.lon)
+          const lat = Number(report.lat)
+
+          console.log("回報座標：", { id: report.id, lon, lat })
+
+          if (
+            !Number.isFinite(lon) ||
+            !Number.isFinite(lat) ||
+            lon < -180 || lon > 180 ||
+            lat < -90 || lat > 90
+          ) {
+            console.warn("略過無效回報座標：", report)
+            return
+          }
+
           viewer.entities.add({
             id: `report-${report.id}`,
-
-            position: [
-              report.lon,
-              report.lat,
-              80
-            ],
-
+            position: [lon, lat, 60],
             point: {
               color: "#ff0000",
-              pixelSize: 20,
-              show: true,
-              disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            } as any,
-
+              pixelSize: 12,
+            },
             properties: {
               isReport: true,
               text: report.text,
               time: report.time
             }
           })
-
-          console.log("Reports:", reports)
-console.log("Entity count:", viewer.entities.values.length)
         })
+
+
+
 
         const handleMouseMove = (event: ViewerMouseMoveEvent) => {
           const pick = event.pick
@@ -516,12 +567,38 @@ console.log("Entity count:", viewer.entities.values.length)
             🚨 Citizen Reported Case
           </h2>
 
-          <div
+<div
             style={{
               fontSize: "14px",
-              marginTop: "12px"
+              marginTop: "12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
+            {/* 類別 */}
+            <p style={{ margin: 0 }}>
+              <strong>Category:</strong> {popupReport.category || "N/A"}
+            </p>
+
+            {/* 是否緊急通報警局 */}
+            {popupReport.isUrgentPolice && (
+              <p style={{ margin: 0, background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "4px", color: "#f87171", fontWeight: "bold" }}>
+                🚨 Urgent: Police Notified
+              </p>
+            )}
+
+            {/* 聯絡人資訊 */}
+            <p style={{ margin: 0 }}>
+              <strong>Name:</strong> {popupReport.name || "Anonymous"}
+            </p>
+            <p style={{ margin: 0 }}>
+              <strong>Phone:</strong> {popupReport.phone || "N/A"}
+            </p>
+            <p style={{ margin: 0 }}>
+              <strong>Email:</strong> {popupReport.email || "N/A"}
+            </p>
+
             <p style={{ margin: "4px 0" }}>
               <strong>Report Time:</strong>{" "}
               {popupReport.time}

@@ -9,10 +9,16 @@ const OSM_ASSET_ID = "96188"
 
 export default function CitizenReport() {
   const [reportText, setReportText] = useState('')
+  // 新增聯絡資訊的 State
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+
   // 預設為康塞普西翁市區中心
   const [latitude, setLatitude] = useState(-36.827063)
   const [longitude, setLongitude] = useState(-73.050201)
-  
+  const [category, setCategory] = useState('Roads & Infrastructure') // 預設類別
+  const [isUrgentPolice, setIsUrgentPolice] = useState(false) // 是否同步通報警局
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
   const navigate = useNavigate()
@@ -26,7 +32,6 @@ export default function CitizenReport() {
       mapContainerRef.current.innerHTML = ''
 
       try {
-        // 初始化小型地圖 Viewer，並補上大氣層與光源設定，避免畫面全黑
         viewer = await tellux.Viewer.create(mapContainerRef.current, {
           renderer: { type: "webgl" },
           camera: {
@@ -37,7 +42,7 @@ export default function CitizenReport() {
             atmosphere: {
               show: true,
               lighting: {
-                mode: "light-source",
+                mode: "post-process",
                 sunLight: true,
                 skyLight: true
               }
@@ -61,12 +66,6 @@ export default function CitizenReport() {
             id: "google-base",
             creasedNormals: true,
           })
-
-          // // 同步載入 OSM 建築，讓使用者可以直接點擊建築物選取位置
-          // viewer.tilesets.add({
-          //   source: { type: "cesium-ion", assetId: OSM_ASSET_ID, apiToken: ION_TOKEN },
-          //   id: "osm-buildings",
-          // })
         }
 
         // 監聽點擊事件：直接從 3D Tiles feature 抓取經緯度
@@ -81,11 +80,11 @@ export default function CitizenReport() {
             setLongitude(Number(lon.toFixed(6)))
             setLatitude(Number(lat.toFixed(6)))
 
-// 清除舊標記並加上新點擊的紅點
+            // 清除舊標記並加上新點擊的紅點
             viewer.entities.removeAll()
             viewer.entities.add({
               id: 'selected-location',
-              position: [lon, lat, 50], // 調整高度到 100 讓它漂浮在上方
+              position: [lon, lat, 50],
               point: {
                 color: "#ef4444",
                 pixelSize: 20,
@@ -125,6 +124,11 @@ export default function CitizenReport() {
 
     const newReport = {
       id: Date.now().toString(),
+      name: name || 'Anonymous', // 儲存姓名，若沒填則預設匿名
+      phone: phone || 'N/A',     // 儲存電話
+      email: email || 'N/A',     // 儲存 Email
+      category: category,
+      isUrgentPolice: isUrgentPolice,
       text: reportText,
       lat: latitude,
       lon: longitude,
@@ -140,10 +144,45 @@ export default function CitizenReport() {
   }
 
   return (
-    <div style={{ backgroundColor: '#ffffff', height: '100vh', width: '100vw', padding: '20px', boxSizing: 'border-box', overflowY: 'auto' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif', color: '#111827' }}>
+    <div style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', padding: '20px', boxSizing: 'border-box', overflowY: 'auto' }}>
+      <div style={{ maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif', color: '#111827', paddingBottom: '40px' }}>
         <h1 style={{ fontSize: '24px', marginBottom: '16px', color: '#111827' }}>Citizen Reporting System</h1>
         
+        {/* 聯絡資訊填寫欄位 (姓名、電話、Email) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#4b5563' }}>Name</label>
+            <input 
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#4b5563' }}>Phone</label>
+            <input 
+              type="tel"
+              placeholder="Your phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#4b5563' }}>Email</label>
+          <input 
+            type="email"
+            placeholder="your.email@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
+          />
+        </div>
+
         {/* 嵌入式小地圖區塊 */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '14px', marginBottom: '6px', color: '#4b5563', fontWeight: 'bold' }}>
@@ -179,6 +218,23 @@ export default function CitizenReport() {
           </div>
         </div>
 
+        {/* 案件類別下拉選單 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#4b5563' }}>Category</label>
+          <select 
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: '4px', backgroundColor: '#f9fafb', color: '#111827' }}
+          >
+            <option value="Roads & Infrastructure">Roads & Infrastructure</option>
+            <option value="Lighting & Utilities">Lighting & Utilities</option>
+            <option value="Environment & Sanitation">Environment & Sanitation</option>
+            <option value="Public Safety">Public Safety</option>
+            <option value="Fire & Disaster Prevention">Fire & Disaster Prevention</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
         {/* 內容輸入區塊 */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#4b5563' }}>Statement</label>
@@ -189,6 +245,20 @@ export default function CitizenReport() {
             value={reportText}
             onChange={(e) => setReportText(e.target.value)}
           />
+        </div>
+
+        {/* 勾選框：立即通報警察局 / 相關應變單位 */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px', gap: '8px' }}>
+          <input 
+            type="checkbox" 
+            id="policeCheckbox"
+            checked={isUrgentPolice}
+            onChange={(e) => setIsUrgentPolice(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <label htmlFor="policeCheckbox" style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }}>
+            🚨 Immediately notify police / relevant emergency response units
+          </label>
         </div>
 
         <button 
