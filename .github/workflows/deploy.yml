@@ -16,23 +16,26 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04   # 🔥 固定版本，避免 ubuntu-latest 跳到 26
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24     # 🔥 GitHub Actions 現在要求 Node.js 24
           cache: npm
+
       - run: npm ci
       - run: npm run build
         env:
           VITE_CESIUM_ION_TOKEN: ${{ secrets.VITE_CESIUM_ION_TOKEN }}
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04   # 🔥 同樣固定版本
     needs: build
     environment:
       name: github-pages
