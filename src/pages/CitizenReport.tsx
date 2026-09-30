@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import tellux from 'tellux'
 import type { ViewerClickEvent } from 'tellux'
+import { supabase } from '../supabaseClient'
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
@@ -118,17 +119,16 @@ export default function CitizenReport() {
     }
   }, [])
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!reportText) return alert("Please key in your statement.")
     if (!latitude || !longitude) return alert("Please select a location on the map.")
 
     const newReport = {
-      id: Date.now().toString(),
-      name: name || 'Anonymous', // 儲存姓名，若沒填則預設匿名
-      phone: phone || 'N/A',     // 儲存電話
-      email: email || 'N/A',     // 儲存 Email
+      name: name || 'Anonymous',
+      phone: phone || 'N/A',
+      email: email || 'N/A',
       category: category,
-      isUrgentPolice: isUrgentPolice,
+      is_urgent_police: isUrgentPolice,
       text: reportText,
       lat: latitude,
       lon: longitude,
@@ -136,10 +136,16 @@ export default function CitizenReport() {
       time: new Date().toLocaleString()
     }
 
-    const existingReports = JSON.parse(localStorage.getItem('reports') || '[]')
-    localStorage.setItem('reports', JSON.stringify([...existingReports, newReport]))
+    // send the report to Supabase cloud database
+    const { error } = await supabase.from('reports').insert([newReport])
 
-    alert("Report successful! Moving to dashboard.")
+    if (error) {
+      console.error("Error inserting report:", error)
+      alert("Failed to submit report to cloud database.")
+      return
+    }
+
+    alert("Report successfully saved to Supabase cloud database!")
     navigate('/dashboard')
   }
 

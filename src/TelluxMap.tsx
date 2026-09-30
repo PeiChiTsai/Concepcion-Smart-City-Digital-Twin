@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import tellux from 'tellux'
 import * as Cesium from 'cesium'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
+import { supabase } from './supabaseClient' 
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
 //OSM_ASSET_ID = 96188
@@ -221,42 +222,33 @@ export const TelluxMap: React.FC = () => {
         }
 
         // 繪製紅點
-        const reports = JSON.parse(
-          localStorage.getItem('reports') || '[]'
-        )
+        const { data: reports, error } = await supabase.from('reports').select('*')
 
-
-        reports.forEach((report: any) => {
-          const lon = Number(report.lon)
-          const lat = Number(report.lat)
-
-          console.log("回報座標：", { id: report.id, lon, lat })
-
-          if (
-            !Number.isFinite(lon) ||
-            !Number.isFinite(lat) ||
-            lon < -180 || lon > 180 ||
-            lat < -90 || lat > 90
-          ) {
-            console.warn("略過無效回報座標：", report)
-            return
-          }
-
-          viewer.entities.add({
-            id: `report-${report.id}`,
-            position: [lon, lat, 60],
-            point: {
-              color: "#ff0000",
-              pixelSize: 12,
-            },
-            properties: {
-              isReport: true,
-              text: report.text,
-              time: report.time
-            }
+        if (error) {
+          console.error("無法從雲端載入通報資料:", error)
+        } else if (reports) {
+          reports.forEach((report: any) => {
+            viewer.entities.add({
+              id: `report-${report.id}`,
+              position: [report.lon, report.lat, 80],
+              point: {
+                color: report.is_urgent_police ? "#dc2626" : "#ef4444", // 如果是緊急通報可以用更深或醒目的紅
+                pixelSize: 22,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              } as any,
+              properties: {
+                isReport: true,
+                text: report.text,
+                time: report.time,
+                category: report.category,
+                name: report.name,
+                phone: report.phone,
+                email: report.email,
+                isUrgentPolice: report.is_urgent_police
+              }
+            })
           })
-        })
-
+        }
 
 
 
@@ -359,23 +351,19 @@ export const TelluxMap: React.FC = () => {
           // Citizen Report click
           if (entityId.startsWith('report-')) {
             const reportId = entityId.replace('report-', '')
-
-            const targetReport = reports.find(
-              (r: any) => String(r.id) === reportId
-            )
+            const targetReport = reports?.find((r: any) => String(r.id) === reportId)
 
             if (targetReport) {
-              setPopupReport({
-                text: targetReport.text || "無詳細內容",
+              setPopupReport({ 
+                text: targetReport.text || "無詳細內容", 
                 time: targetReport.time || "未知時間",
                 category: targetReport.category,
-                isUrgentPolice: targetReport.isUrgentPolice,
                 name: targetReport.name,
                 phone: targetReport.phone,
-                email: targetReport.email
+                email: targetReport.email,
+                isUrgentPolice: targetReport.is_urgent_police
               })
-
-              setPopupFeature(null)
+              setPopupFeature(null) 
               viewer.highlighter.clear()
               return
             }
