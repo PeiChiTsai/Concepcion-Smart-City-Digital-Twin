@@ -2,7 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import CitizenReport from './pages/CitizenReport'
 import GovDashboard from './pages/GovDashboard'
-
+import AdminDashboard from './pages/AdminDashboard'
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -14,7 +14,7 @@ export default function App() {
           <span style={{ fontWeight: 'bold', marginRight: '20px' }}>Change Role:</span>
           <Link to="/report" style={{ marginRight: '15px', color: '#2563eb', textDecoration: 'none' }}>Citizen (Report)</Link>
           <Link to="/dashboard" style={{ color: '#059669', textDecoration: 'none' }}>Municipality (Management)</Link>
-
+          <Link to="/admin" style={{ marginLeft: '15px', color: '#b91c1c', textDecoration: 'none' }}>Admin (Dashboard)</Link>
         </nav>
 
         {/* 這裡面的內容會自動填滿剩餘的空間 */}
@@ -23,6 +23,7 @@ export default function App() {
             <Route path="/" element={<CitizenReport />} />
             <Route path="/report" element={<CitizenReport />} />
             <Route path="/dashboard" element={<GovDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
         </div>
       </div>
