@@ -13,8 +13,8 @@ export default function App() {
         <nav style={{ background: '#f3f4f6', padding: '10px 20px', borderBottom: '1px solid #ccc', flexShrink: 0 }}>
           <span style={{ fontWeight: 'bold', marginRight: '20px' }}>Change Role:</span>
           <Link to="/report" style={{ marginRight: '15px', color: '#2563eb', textDecoration: 'none' }}>Citizen (Report)</Link>
-          <Link to="/dashboard" style={{ color: '#059669', textDecoration: 'none' }}>Municipality (Management)</Link>
-          <Link to="/admin" style={{ marginLeft: '15px', color: '#b91c1c', textDecoration: 'none' }}>Admin (Dashboard)</Link>
+          <Link to="/dashboard" style={{ color: '#059669', textDecoration: 'none' }}>3D Map</Link>
+          <Link to="/admin" style={{ marginLeft: '15px', color: '#b91c1c', textDecoration: 'none' }}>Admin Dashboard (Management)</Link>
         </nav>
 
         {/* 這裡面的內容會自動填滿剩餘的空間 */}
