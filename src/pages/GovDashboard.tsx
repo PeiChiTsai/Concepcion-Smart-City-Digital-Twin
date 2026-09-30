@@ -21,7 +21,7 @@ export default function GovDashboard() {
           Concepcion Smart City Digital Twin Dashboard
         </span>
         
-        <button 
+        {/* <button 
           onClick={() => {
             if(window.confirm("確定要清空所有通報資料嗎？")) {
               localStorage.removeItem('reports')
@@ -43,7 +43,7 @@ export default function GovDashboard() {
           }}
         >
           Clean all data
-        </button>
+        </button> */}
       </div>
       
       {/* 地圖區塊：自動填滿剩下的所有空間 */}

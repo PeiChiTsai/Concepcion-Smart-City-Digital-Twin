@@ -14,7 +14,7 @@ export default function AdminDashboard() {
       .order('id', { ascending: false }) // 最新建立的排在最前面
 
     if (error) {
-      console.error("載入失敗:", error)
+      console.error("Failed to load reports:", error)
     } else {
       setReports(data || [])
     }
@@ -33,7 +33,7 @@ export default function AdminDashboard() {
       .eq('id', id)
 
     if (error) {
-      alert("更新狀態失敗")
+      alert("update failed")
     } else {
       // 重新整理列表
       fetchReports()
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
 
   // 3. 刪除通報
   const handleDelete = async (id: number) => {
-    if (!window.confirm("確定要刪除這筆通報嗎？")) return
+    if (!window.confirm("Are you sure you want to delete this report?")) return
 
     const { error } = await supabase
       .from('reports')
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
       .eq('id', id)
 
     if (error) {
-      alert("刪除失敗")
+      alert("delete failed")
     } else {
       fetchReports()
     }
@@ -60,28 +60,28 @@ export default function AdminDashboard() {
     <div style={{ padding: '30px', fontFamily: 'sans-serif', backgroundColor: '#f3f4f6', minHeight: '100vh', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '20px' }}>
-          🛠️ 市政管理者後台 (Admin Dashboard)
+          🛠️ Municipality Admin Dashboard
         </h1>
 
         {loading ? (
-          <p>載入中...</p>
+          <p>Loading...</p>
         ) : (
           <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#e5e7eb', color: '#374151', borderBottom: '1px solid #d1d5db' }}>
                   <th style={{ padding: '12px' }}>ID</th>
-                  <th style={{ padding: '12px' }}>時間 / 類別</th>
-                  <th style={{ padding: '12px' }}>通報人</th>
-                  <th style={{ padding: '12px' }}>內容描述</th>
-                  <th style={{ padding: '12px' }}>狀態</th>
-                  <th style={{ padding: '12px' }}>動作</th>
+                  <th style={{ padding: '12px' }}>Time / Category</th>
+                  <th style={{ padding: '12px' }}>Reporter</th>
+                  <th style={{ padding: '12px' }}>Description</th>
+                  <th style={{ padding: '12px' }}>Status</th>
+                  <th style={{ padding: '12px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {reports.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>目前沒有任何市民通報</td>
+                    <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Currently, there are no citizen reports.</td>
                   </tr>
                 ) : (
                   reports.map((report) => (
@@ -91,7 +91,7 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>{report.time}</div>
                         <div style={{ fontWeight: '500', color: '#2563eb' }}>{report.category}</div>
                         {report.is_urgent_police && (
-                          <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🚨 緊急警局通報</span>
+                          <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🚨 Urgent Report</span>
                         )}
                       </td>
                       <td style={{ padding: '12px' }}>
@@ -107,9 +107,9 @@ export default function AdminDashboard() {
                           onChange={(e) => handleStatusChange(report.id, e.target.value)}
                           style={{ padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db', background: '#f9fafb' }}
                         >
-                          <option value="pending">Pending (處理中)</option>
-                          <option value="in-progress">In Progress (進行中)</option>
-                          <option value="resolved">Resolved (已結案)</option>
+                          <option value="pending">Pending (Processing)</option>
+                          <option value="in-progress">In Progress (In Progress)</option>
+                          <option value="resolved">Resolved (Resolved)</option>
                         </select>
                       </td>
                       <td style={{ padding: '12px' }}>
@@ -117,7 +117,7 @@ export default function AdminDashboard() {
                           onClick={() => handleDelete(report.id)}
                           style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
                         >
-                          刪除
+                          Delete
                         </button>
                       </td>
                     </tr>
