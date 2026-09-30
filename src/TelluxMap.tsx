@@ -4,7 +4,7 @@ import * as Cesium from 'cesium'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
 import { supabase } from './supabaseClient' 
 
-const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
+const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
 //OSM_ASSET_ID = 96188
 //Concepcion_3D_Tiles = 5950827
 const OSM_ASSET_ID = 5950827
@@ -150,7 +150,7 @@ export const TelluxMap: React.FC = () => {
         }
 
 
-        if (ION_TOKEN && ION_TOKEN !== "填入你的Token") {
+        if (ION_TOKEN && ION_TOKEN !== "Please enter your Token") {
           // 載入 Cesium World Terrain（ion asset ID: 1）
           viewer.terrain.set({
             type: "cesium-ion",

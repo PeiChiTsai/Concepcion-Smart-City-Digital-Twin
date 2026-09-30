@@ -1,11 +1,11 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { HashRouter, Routes, Route, Link } from 'react-router-dom'
 import CitizenReport from './pages/CitizenReport'
 import GovDashboard from './pages/GovDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 export default function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <HashRouter>
       {/* 最外層加上 Flex 排版，讓它佔滿整個畫面 */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
         
@@ -27,6 +27,6 @@ export default function App() {
           </Routes>
         </div>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
