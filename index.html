@@ -49,6 +49,13 @@
   <div id="feature-hover" hidden></div>
   <div id="feature-popup" hidden></div>
 
+  <script type="module">
+    const route = new URLSearchParams(window.location.search).get('p')
+    if (route?.startsWith('/')) {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+      window.history.replaceState(null, '', `${base}${route}`)
+    }
+  </script>
   <script type="module" src="/src/main.tsx"></script> 
 </body>
 </html>

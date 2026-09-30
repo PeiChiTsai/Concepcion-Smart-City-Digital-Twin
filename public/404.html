@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting</title>
+</head>
+<body>
+  <script>
+    const base = '/Concepcion-Smart-City-Digital-Twin'
+    const route = window.location.pathname.startsWith(base)
+      ? window.location.pathname.slice(base.length)
+      : window.location.pathname
+    const destination = `${base}/?p=${encodeURIComponent(`${route || '/'}${window.location.search}`)}`
+    window.location.replace(destination)
+  </script>
+</body>
+</html>
