@@ -6,7 +6,15 @@
   <title>Concepcion Digital Twin Demo</title>
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #viewer { width: 100%; height: 100%; }
+    #viewer {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     
     /* 滑鼠懸停時的小提示框 */
     #feature-hover {
