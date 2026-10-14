@@ -7,6 +7,8 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 34px 28px 22px;
   background: #f4f7f6;
   color: var(--chat-ink);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import './AdminDashboard.css'
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([])
@@ -66,8 +67,8 @@ export default function AdminDashboard() {
         {loading ? (
           <p>Loading...</p>
         ) : (
-          <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+          <div className="admin-report-table-container" style={{ background: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <table className="admin-report-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#e5e7eb', color: '#374151', borderBottom: '1px solid #d1d5db' }}>
                   <th style={{ padding: '12px' }}>ID</th>

@@ -1,0 +1,23 @@
+.admin-report-table-container {
+  overflow: auto;
+}
+
+@media (max-width: 768px) {
+  .admin-report-table-container {
+    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .admin-report-table {
+    min-width: 760px;
+  }
+
+  .admin-report-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+}

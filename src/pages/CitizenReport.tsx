@@ -150,7 +150,7 @@ export default function CitizenReport() {
   }
 
   return (
-    <div style={{ backgroundColor: '#ffffff', height: '100%', width: '100%', padding: '20px', boxSizing: 'border-box', overflowY: 'auto' }}>
+    <div style={{ backgroundColor: '#ffffff', height: '100%', minHeight: 0, width: '100%', padding: '20px', boxSizing: 'border-box', overflowY: 'auto', overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif', color: '#111827', paddingBottom: '40px' }}>
         <h1 style={{ fontSize: '24px', marginBottom: '16px', color: '#111827' }}>Citizen Reporting System</h1>
         
