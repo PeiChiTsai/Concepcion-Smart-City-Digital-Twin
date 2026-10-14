@@ -11,7 +11,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
         
         {/* 這條導覽列會固定在最上面 */}
-        <nav style={{ background: '#f3f4f6', padding: '10px 20px', borderBottom: '1px solid #ccc', flexShrink: 0 }}>
+        <nav style={{ background: '#f3f4f6', padding: 'calc(10px + env(safe-area-inset-top, 0px)) 20px 10px', borderBottom: '1px solid #ccc', flexShrink: 0 }}>
           <span style={{ fontWeight: 'bold', marginRight: '20px' }}>Change Role:</span>
           <Link to="/report" style={{ marginRight: '15px', color: '#2563eb', textDecoration: 'none' }}>Citizen (Report)</Link>
           <Link to="/report-chat" style={{ marginRight: '15px', color: '#2563eb', textDecoration: 'none' }}>Citizen (Chat)</Link>
