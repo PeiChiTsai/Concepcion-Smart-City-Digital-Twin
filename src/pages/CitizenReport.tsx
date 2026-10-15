@@ -8,6 +8,30 @@ const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
 const OSM_ASSET_ID = "96188"
 
+type DeviceLocation = {
+  latitude: number
+  longitude: number
+}
+
+function applyDeviceLocation(viewer: any, location: DeviceLocation) {
+  viewer.camera.flyTo({
+    destination: { longitude: location.longitude, latitude: location.latitude, height: 1500 },
+    orientation: { heading: 0, pitch: -45, roll: 0 },
+  })
+  viewer.entities.remove('device-location')
+  viewer.entities.add({
+    id: 'device-location',
+    position: [location.longitude, location.latitude, 50],
+    point: {
+      color: '#2563eb',
+      pixelSize: 18,
+      outlineColor: '#ffffff',
+      outlineWidth: 3,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    } as any,
+  })
+}
+
 export default function CitizenReport() {
   const [reportText, setReportText] = useState('')
   // 新增聯絡資訊的 State
@@ -18,11 +42,56 @@ export default function CitizenReport() {
   // 預設為康塞普西翁市區中心
   const [latitude, setLatitude] = useState(-36.827063)
   const [longitude, setLongitude] = useState(-73.050201)
+  const [locationStatus, setLocationStatus] = useState('Getting device location...')
   const [category, setCategory] = useState('Roads & Infrastructure') // 預設類別
   const [isUrgentPolice, setIsUrgentPolice] = useState(false) // 是否同步通報警局
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
+  const deviceLocationRef = useRef<DeviceLocation | null>(null)
+  const hasManuallySetLocationRef = useRef(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Device location is not available. Using the default location.')
+      return
+    }
+
+    let isCancelled = false
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (isCancelled || hasManuallySetLocationRef.current) return
+
+        const location = {
+          latitude: Number(coords.latitude.toFixed(6)),
+          longitude: Number(coords.longitude.toFixed(6)),
+        }
+        deviceLocationRef.current = location
+        setLatitude(location.latitude)
+        setLongitude(location.longitude)
+        setLocationStatus('Using your device location.')
+
+        if (viewerRef.current) {
+          applyDeviceLocation(viewerRef.current, location)
+        }
+      },
+      (error) => {
+        if (isCancelled) return
+
+        const reason = error.code === error.PERMISSION_DENIED
+          ? 'Location permission was denied.'
+          : error.code === error.TIMEOUT
+            ? 'Getting device location timed out.'
+            : 'Device location is unavailable.'
+        setLocationStatus(`${reason} Using the default location.`)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    )
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let viewer: any = null
@@ -60,6 +129,10 @@ export default function CitizenReport() {
         viewer.globe.show = true
         viewerRef.current = viewer
 
+        if (deviceLocationRef.current && !hasManuallySetLocationRef.current) {
+          applyDeviceLocation(viewer, deviceLocationRef.current)
+        }
+
         if (ION_TOKEN) {
           // 載入 Google 底圖
           viewer.tilesets.add({
@@ -75,11 +148,13 @@ export default function CitizenReport() {
           const feature = (pick as any)?.type === "tilesFeature" ? (pick as any).feature : null
 
           if (feature && feature.cartographic) {
+            hasManuallySetLocationRef.current = true
             const lon = feature.cartographic.longitude
             const lat = feature.cartographic.latitude
 
             setLongitude(Number(lon.toFixed(6)))
             setLatitude(Number(lat.toFixed(6)))
+            setLocationStatus('Location selected on the map.')
 
             // 清除舊標記並加上新點擊的紅點
             viewer.entities.removeAll()
@@ -198,6 +273,7 @@ export default function CitizenReport() {
             ref={mapContainerRef} 
             style={{ width: '100%', height: '320px', borderRadius: '8px', border: '1px solid #ccc', overflow: 'hidden' }} 
           />
+          <div role="status" style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280' }}>{locationStatus}</div>
         </div>
 
         {/* 經緯度顯示與手動微調區塊 */}
@@ -208,7 +284,11 @@ export default function CitizenReport() {
               type="number" 
               step="any"
               value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value))}
+              onChange={(e) => {
+                hasManuallySetLocationRef.current = true
+                setLocationStatus('Location adjusted manually.')
+                setLatitude(parseFloat(e.target.value))
+              }}
               style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
             />
           </div>
@@ -218,7 +298,11 @@ export default function CitizenReport() {
               type="number" 
               step="any"
               value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value))}
+              onChange={(e) => {
+                hasManuallySetLocationRef.current = true
+                setLocationStatus('Location adjusted manually.')
+                setLongitude(parseFloat(e.target.value))
+              }}
               style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }}
             />
           </div>
