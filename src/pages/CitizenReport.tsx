@@ -7,6 +7,9 @@ import { supabase } from '../supabaseClient'
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "填入你的Token"
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
 const OSM_ASSET_ID = "96188"
+const LOCATION_CAMERA_HEIGHT = 1500
+const LOCATION_CAMERA_PITCH = -45
+const METERS_PER_LATITUDE_DEGREE = 111320
 
 type DeviceLocation = {
   latitude: number
@@ -14,9 +17,12 @@ type DeviceLocation = {
 }
 
 function applyDeviceLocation(viewer: any, location: DeviceLocation) {
+  const cameraOffset = LOCATION_CAMERA_HEIGHT / Math.tan(Math.abs(LOCATION_CAMERA_PITCH) * Math.PI / 180)
+  const cameraLatitude = location.latitude - cameraOffset / METERS_PER_LATITUDE_DEGREE
+
   viewer.camera.flyTo({
-    destination: { longitude: location.longitude, latitude: location.latitude, height: 1500 },
-    orientation: { heading: 0, pitch: -45, roll: 0 },
+    destination: { longitude: location.longitude, latitude: cameraLatitude, height: LOCATION_CAMERA_HEIGHT },
+    orientation: { heading: 0, pitch: LOCATION_CAMERA_PITCH, roll: 0 },
   })
   viewer.entities.remove('device-location')
   viewer.entities.add({
