@@ -49,6 +49,7 @@ export default function CitizenReport() {
   const [latitude, setLatitude] = useState(-36.827063)
   const [longitude, setLongitude] = useState(-73.050201)
   const [locationStatus, setLocationStatus] = useState('Getting device location...')
+  const [isLocating, setIsLocating] = useState(false)
   const [category, setCategory] = useState('Roads & Infrastructure') // 預設類別
   const [isUrgentPolice, setIsUrgentPolice] = useState(false) // 是否同步通報警局
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -56,6 +57,48 @@ export default function CitizenReport() {
   const deviceLocationRef = useRef<DeviceLocation | null>(null)
   const hasManuallySetLocationRef = useRef(false)
   const navigate = useNavigate()
+
+  const useDeviceLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Device location is not available.')
+      return
+    }
+
+    hasManuallySetLocationRef.current = false
+    setIsLocating(true)
+    setLocationStatus('Getting device location...')
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setIsLocating(false)
+        if (hasManuallySetLocationRef.current) return
+
+        const location = {
+          latitude: Number(coords.latitude.toFixed(6)),
+          longitude: Number(coords.longitude.toFixed(6)),
+        }
+        deviceLocationRef.current = location
+        setLatitude(location.latitude)
+        setLongitude(location.longitude)
+        setLocationStatus('Using your device location.')
+
+        if (viewerRef.current) {
+          viewerRef.current.entities.removeAll()
+          applyDeviceLocation(viewerRef.current, location)
+        }
+      },
+      (error) => {
+        setIsLocating(false)
+        const reason = error.code === error.PERMISSION_DENIED
+          ? 'Location permission was denied.'
+          : error.code === error.TIMEOUT
+            ? 'Getting device location timed out.'
+            : 'Device location is unavailable.'
+        setLocationStatus(reason)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    )
+  }
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -279,6 +322,14 @@ export default function CitizenReport() {
             ref={mapContainerRef} 
             style={{ width: '100%', height: '320px', borderRadius: '8px', border: '1px solid #ccc', overflow: 'hidden' }} 
           />
+          <button
+            type="button"
+            onClick={useDeviceLocation}
+            disabled={isLocating}
+            style={{ marginTop: '8px', padding: '8px 12px', border: '1px solid #2563eb', borderRadius: '6px', background: isLocating ? '#eff6ff' : '#ffffff', color: '#2563eb', cursor: isLocating ? 'wait' : 'pointer', fontSize: '14px', fontWeight: '600' }}
+          >
+            {isLocating ? 'Getting location...' : '◎ Use my device location'}
+          </button>
           <div role="status" style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280' }}>{locationStatus}</div>
         </div>
 
