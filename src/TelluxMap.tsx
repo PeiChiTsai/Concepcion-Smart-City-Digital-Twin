@@ -145,6 +145,34 @@ function getFeatureName(feature: Picked3DTilesFeature) {
   return `OSM building ID: ${feature.featureId ?? "unknown"}`
 }
 
+function getReportColor(report: { status?: unknown; is_urgent_police?: unknown }) {
+  const status = String(report.status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+
+  if (status === 'resolved') return '#ffffff'
+  if (report.is_urgent_police === true || report.is_urgent_police === 'true') return '#dc2626'
+  if (status === 'pending') return '#22c55e'
+  if (status === 'in-progress') return '#facc15'
+
+  return '#22c55e'
+}
+
+function getReportStatusLabel(status: unknown) {
+  const normalizedStatus = String(status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    'in-progress': 'In Progress',
+    resolved: 'Resolved'
+  }
+
+  return labels[normalizedStatus] ?? String(status ?? 'Pending')
+}
+
+function getReportPointSize(cameraHeight: number) {
+  const referenceHeight = 800
+  const size = 22 * Math.sqrt(referenceHeight / Math.max(cameraHeight, 1))
+  return Math.round(Math.min(32, Math.max(8, size)))
+}
+
 export const TelluxMap: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
@@ -164,6 +192,7 @@ export const TelluxMap: React.FC = () => {
     time: string
     category?: string
     isUrgentPolice?: boolean
+    status?: string
     name?: string
     phone?: string
     email?: string
@@ -336,17 +365,18 @@ export const TelluxMap: React.FC = () => {
         }
 
         // 繪製紅點
+        const reportEntities: any[] = []
         const { data: reports, error } = await supabase.from('reports').select('*')
 
         if (error) {
           console.error("無法從雲端載入通報資料:", error)
         } else if (reports) {
           reports.forEach((report: any) => {
-            viewer.entities.add({
+            const entity = viewer.entities.add({
               id: `report-${report.id}`,
               position: [report.lon, report.lat, 80],
               point: {
-                color: report.is_urgent_police ? "#dc2626" : "#ef4444", // 如果是緊急通報可以用更深或醒目的紅
+                color: getReportColor(report),
                 pixelSize: 22,
                 disableDepthTestDistance: Number.POSITIVE_INFINITY,
               } as any,
@@ -361,8 +391,45 @@ export const TelluxMap: React.FC = () => {
                 isUrgentPolice: report.is_urgent_police
               }
             })
+            reportEntities.push(entity)
           })
         }
+
+        const updateReportPointSizes = () => {
+          const cameraHeight = viewer.camera.getCurrentHeight()
+          if (cameraHeight === null || !Number.isFinite(cameraHeight)) return
+
+          const pixelSize = getReportPointSize(cameraHeight)
+          reportEntities.forEach(entity => {
+            if (entity.point && entity.point.pixelSize !== pixelSize) {
+              entity.point.pixelSize = pixelSize
+            }
+          })
+        }
+
+        let pointSizeUpdateFrame: number | null = null
+        const scheduleReportPointSizeUpdate = () => {
+          if (pointSizeUpdateFrame !== null) return
+
+          pointSizeUpdateFrame = requestAnimationFrame(() => {
+            pointSizeUpdateFrame = null
+            updateReportPointSizes()
+          })
+        }
+
+        const handlePointerMove = (event: PointerEvent) => {
+          if (event.buttons > 0 || event.pointerType === 'touch') {
+            scheduleReportPointSizeUpdate()
+          }
+        }
+
+        const handleTouchMove = () => scheduleReportPointSizeUpdate()
+
+        updateReportPointSizes()
+        viewer.controls.addEventListener('change', updateReportPointSizes)
+        viewer.container.addEventListener('wheel', scheduleReportPointSizeUpdate, { passive: true })
+        viewer.container.addEventListener('pointermove', handlePointerMove, { passive: true })
+        viewer.container.addEventListener('touchmove', handleTouchMove, { passive: true })
 
 
 
@@ -475,7 +542,8 @@ export const TelluxMap: React.FC = () => {
                 name: targetReport.name,
                 phone: targetReport.phone,
                 email: targetReport.email,
-                isUrgentPolice: targetReport.is_urgent_police
+                isUrgentPolice: targetReport.is_urgent_police,
+                status: targetReport.status
               })
               setPopupFeature(null) 
               viewer.highlighter.clear()
@@ -509,6 +577,13 @@ export const TelluxMap: React.FC = () => {
         ;(viewer as any)._cleanupEvents = () => {
           viewer.off("mousemove", handleMouseMove)
           viewer.off("click", handleClick)
+          viewer.controls.removeEventListener('change', updateReportPointSizes)
+          viewer.container.removeEventListener('wheel', scheduleReportPointSizeUpdate)
+          viewer.container.removeEventListener('pointermove', handlePointerMove)
+          viewer.container.removeEventListener('touchmove', handleTouchMove)
+          if (pointSizeUpdateFrame !== null) {
+            cancelAnimationFrame(pointSizeUpdateFrame)
+          }
         }
 
       } catch (e) {
@@ -654,11 +729,17 @@ export const TelluxMap: React.FC = () => {
             position: "absolute",
             top: 20,
             right: 20,
-            background: "rgba(220, 38, 38, 0.9)",
-            color: "white",
+            background: `${getReportColor({
+              status: popupReport.status,
+              is_urgent_police: popupReport.isUrgentPolice
+            })}cc`,
+            color: getReportColor({
+              status: popupReport.status,
+              is_urgent_police: popupReport.isUrgentPolice
+            }) === "#dc2626" ? "white" : "#111827",
             padding: "16px",
             borderRadius: "8px",
-            border: "1px solid #ef4444",
+            border: "1px solid rgba(0,0,0,0.2)",
             minWidth: "250px",
             zIndex: 1000,
             boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
@@ -668,8 +749,7 @@ export const TelluxMap: React.FC = () => {
             style={{
               marginTop: 0,
               fontSize: "18px",
-              borderBottom:
-                "1px solid rgba(255,255,255,0.3)",
+              borderBottom: "1px solid rgba(0,0,0,0.2)",
               paddingBottom: "8px"
             }}
           >
@@ -690,9 +770,13 @@ export const TelluxMap: React.FC = () => {
               <strong>Category:</strong> {popupReport.category || "N/A"}
             </p>
 
+            <p style={{ margin: 0 }}>
+              <strong>Status:</strong> {getReportStatusLabel(popupReport.status)}
+            </p>
+
             {/* 是否緊急通報警局 */}
             {popupReport.isUrgentPolice && (
-              <p style={{ margin: 0, background: "rgba(0,0,0,0.3)", padding: "4px 8px", borderRadius: "4px", color: "#f87171", fontWeight: "bold" }}>
+              <p style={{ margin: 0, background: "rgba(0,0,0,0.15)", padding: "4px 8px", borderRadius: "4px", fontWeight: "bold" }}>
                 🚨 Urgent: Police Notified
               </p>
             )}
@@ -735,8 +819,8 @@ export const TelluxMap: React.FC = () => {
               marginTop: "16px",
               width: "100%",
               padding: "8px",
-              background: "white",
-              color: "#dc2626",
+              background: "rgba(255,255,255,0.9)",
+              color: "#111827",
               border: "none",
               borderRadius: "4px",
               cursor: "pointer",
