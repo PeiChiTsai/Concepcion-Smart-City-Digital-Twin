@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import tellux from 'tellux'
 import * as Cesium from 'cesium'
+import * as THREE from 'three'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
 import { supabase } from './supabaseClient' 
 
@@ -25,6 +26,114 @@ const CAMERA_VIEW = {
 
 // 如果太陽光影與當地時間有時差，可以在這裡調整小時加減（例如 +3 代表將時鐘往後撥 3 小時）
 const TIME_OFFSET_HOURS = 0
+
+const BUILDING_HEIGHT_COLORS = [
+  { height: 0, color: new THREE.Color('#2dd4bf') },
+  { height: 8, color: new THREE.Color('#4ade80') },
+  { height: 18, color: new THREE.Color('#facc15') },
+  { height: 35, color: new THREE.Color('#fb923c') },
+  { height: 60, color: new THREE.Color('#ef4444') },
+]
+
+function getBuildingHeightColor(height: number) {
+  const first = BUILDING_HEIGHT_COLORS[0]
+  const last = BUILDING_HEIGHT_COLORS[BUILDING_HEIGHT_COLORS.length - 1]
+
+  if (height <= first.height) return first.color
+  if (height >= last.height) return last.color
+
+  for (let index = 1; index < BUILDING_HEIGHT_COLORS.length; index += 1) {
+    const upper = BUILDING_HEIGHT_COLORS[index]
+    const lower = BUILDING_HEIGHT_COLORS[index - 1]
+
+    if (height <= upper.height) {
+      const amount = (height - lower.height) / (upper.height - lower.height)
+      return lower.color.clone().lerp(upper.color, amount)
+    }
+  }
+
+  return last.color
+}
+
+function colorBuildingMesh(mesh: THREE.Mesh) {
+  const geometry = mesh.geometry.clone()
+  mesh.geometry = geometry
+  if (!geometry.boundingBox) geometry.computeBoundingBox()
+
+  const position = geometry.getAttribute('position')
+  const meshFeatures = (mesh.userData as {
+    meshFeatures?: { getFeatureInfo?: () => Array<{ attribute?: number | null; nullFeatureId?: number | null }> }
+  }).meshFeatures
+  const featureAttributeIndex = meshFeatures?.getFeatureInfo?.()
+    .find(feature => feature.attribute !== undefined && feature.attribute !== null)?.attribute
+  const featureAttributeName = featureAttributeIndex === undefined
+    ? undefined
+    : `_feature_id_${featureAttributeIndex}`
+  const featureAttribute = (featureAttributeName
+    ? geometry.getAttribute(featureAttributeName)
+    : undefined) ?? Object.entries(geometry.attributes)
+    .find(([name]) => /^_feature_id_\d+$/i.test(name) || /batch.?id/i.test(name))?.[1]
+
+  if (position && featureAttribute) {
+    const featureHeights = new Map<number, { min: number; max: number }>()
+
+    for (let index = 0; index < position.count; index += 1) {
+      const featureId = featureAttribute.getX(index)
+      const y = position.getY(index)
+      if (!Number.isFinite(featureId) || !Number.isFinite(y)) continue
+
+      const bounds = featureHeights.get(featureId)
+      if (bounds) {
+        bounds.min = Math.min(bounds.min, y)
+        bounds.max = Math.max(bounds.max, y)
+      } else {
+        featureHeights.set(featureId, { min: y, max: y })
+      }
+    }
+
+    const colors = new Float32Array(position.count * 3)
+    const color = new THREE.Color()
+
+    for (let index = 0; index < position.count; index += 1) {
+      const bounds = featureHeights.get(featureAttribute.getX(index))
+      color.copy(bounds
+        ? getBuildingHeightColor(bounds.max - bounds.min)
+        : getBuildingHeightColor(0))
+      color.toArray(colors, index * 3)
+    }
+
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  } else {
+    const height = geometry.boundingBox?.getSize(new THREE.Vector3()).y ?? 0
+    const color = getBuildingHeightColor(height)
+    const colors = new Float32Array(position ? position.count * 3 : 0)
+
+    for (let index = 0; index < colors.length; index += 3) {
+      color.toArray(colors, index)
+    }
+
+    if (position) geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  }
+
+  const colorMaterial = (material: THREE.Material) => {
+    const clonedMaterial = material.clone()
+    const materialWithColor = clonedMaterial as THREE.Material & {
+      color?: THREE.Color
+      vertexColors?: boolean
+    }
+
+    materialWithColor.color?.set('#ffffff')
+    materialWithColor.vertexColors = true
+    clonedMaterial.transparent = false
+    clonedMaterial.opacity = 1
+    clonedMaterial.needsUpdate = true
+    return clonedMaterial
+  }
+
+  mesh.material = Array.isArray(mesh.material)
+    ? mesh.material.map(colorMaterial)
+    : colorMaterial(mesh.material)
+}
 
 function getFeatureName(feature: Picked3DTilesFeature) {
   const props = feature.properties
@@ -67,6 +176,9 @@ export const TelluxMap: React.FC = () => {
     async function initViewer() {
       if (!containerRef.current) return
 
+      const fixedTime = new Date()
+      fixedTime.setHours(12, 0, 0, 0)
+
       // 【關鍵修復】每次初始化前清空容器，
       // 防止 Vite HMR 熱更新或重整時 WebGPU Context 衝突卡死
       containerRef.current.innerHTML = ''
@@ -87,6 +199,11 @@ export const TelluxMap: React.FC = () => {
               pitch: CAMERA_VIEW.pitch,
               roll: CAMERA_VIEW.roll
             },
+          },
+
+          clock: {
+            currentTime: fixedTime,
+            shouldAnimate: false
           },
 
           highlighter: {
@@ -122,7 +239,8 @@ export const TelluxMap: React.FC = () => {
           },
 
           widgets: {
-            timeline: true
+            // timeline: true,
+            timeline: false
           }
         })
 
@@ -133,7 +251,8 @@ export const TelluxMap: React.FC = () => {
 
         viewer.globe.show = true
         viewerRef.current = viewer
-// 【時差調整邏輯】當內建 Widget 改變時間時，將時鐘套用 TIME_OFFSET_HOURS
+        /*
+        // 【時差調整邏輯】當內建 Widget 改變時間時，將時鐘套用 TIME_OFFSET_HOURS
         if (TIME_OFFSET_HOURS !== 0 && viewer.clock) {
           let isUpdating = false
           viewer.clock.onTick?.addEventListener(() => {
@@ -148,6 +267,7 @@ export const TelluxMap: React.FC = () => {
             isUpdating = false
           })
         }
+        */
 
 
         if (ION_TOKEN && ION_TOKEN !== "Please enter your Token") {
@@ -208,13 +328,7 @@ export const TelluxMap: React.FC = () => {
             (event: any) => {
               event.scene.traverse((child: any) => {
                 if (child.isMesh && child.material) {
-                  child.material.color.set('#ff0101')
-                  child.material.transparent = false
-                  child.material.opacity = 1
-                  // child.material.depthWrite = false
-                  // child.material.depthTest = false
-                  // child.renderOrder = 999
-                  child.material.needsUpdate = true
+                  colorBuildingMesh(child)
                 }
               })
             }
