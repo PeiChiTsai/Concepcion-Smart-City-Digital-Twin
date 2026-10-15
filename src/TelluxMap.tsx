@@ -27,6 +27,9 @@ const CAMERA_VIEW = {
 // 如果太陽光影與當地時間有時差，可以在這裡調整小時加減（例如 +3 代表將時鐘往後撥 3 小時）
 const TIME_OFFSET_HOURS = 0
 
+type ReportLayer = 'pending' | 'in-progress' | 'resolved' | 'urgent'
+type ReportLayerFilters = Record<ReportLayer, boolean>
+
 const BUILDING_HEIGHT_COLORS = [
   { height: 0, color: new THREE.Color('#2dd4bf') },
   { height: 8, color: new THREE.Color('#4ade80') },
@@ -145,19 +148,33 @@ function getFeatureName(feature: Picked3DTilesFeature) {
   return `OSM building ID: ${feature.featureId ?? "unknown"}`
 }
 
+function normalizeReportStatus(status: unknown) {
+  return String(status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+}
+
+function getReportLayer(report: { status?: unknown; is_urgent_police?: unknown }): ReportLayer {
+  const status = normalizeReportStatus(report.status)
+
+  if (status === 'resolved') return 'resolved'
+  if (report.is_urgent_police === true || report.is_urgent_police === 'true') return 'urgent'
+  if (status === 'in-progress') return 'in-progress'
+
+  return 'pending'
+}
+
 function getReportColor(report: { status?: unknown; is_urgent_police?: unknown }) {
-  const status = String(report.status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+  const colors: Record<ReportLayer, string> = {
+    pending: '#22c55e',
+    'in-progress': '#facc15',
+    resolved: '#ffffff',
+    urgent: '#dc2626'
+  }
 
-  if (status === 'resolved') return '#ffffff'
-  if (report.is_urgent_police === true || report.is_urgent_police === 'true') return '#dc2626'
-  if (status === 'pending') return '#22c55e'
-  if (status === 'in-progress') return '#facc15'
-
-  return '#22c55e'
+  return colors[getReportLayer(report)]
 }
 
 function getReportStatusLabel(status: unknown) {
-  const normalizedStatus = String(status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+  const normalizedStatus = normalizeReportStatus(status)
   const labels: Record<string, string> = {
     pending: 'Pending',
     'in-progress': 'In Progress',
@@ -176,6 +193,27 @@ function getReportPointSize(cameraHeight: number) {
 export const TelluxMap: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
+  const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
+  const [reportLayerFilters, setReportLayerFilters] = useState<ReportLayerFilters>({
+    pending: true,
+    'in-progress': true,
+    resolved: true,
+    urgent: true
+  })
+  const reportLayerFiltersRef = useRef(reportLayerFilters)
+
+  useEffect(() => {
+    reportLayerFiltersRef.current = reportLayerFilters
+    reportEntitiesRef.current.forEach(({ entity, layer }) => {
+      entity.show = reportLayerFilters[layer]
+    })
+  }, [reportLayerFilters])
+
+  const toggleReportLayer = (layer: ReportLayer, checked: boolean) => {
+    const nextFilters = { ...reportLayerFiltersRef.current, [layer]: checked }
+    reportLayerFiltersRef.current = nextFilters
+    setReportLayerFilters(nextFilters)
+  }
 
   const [hoverInfo, setHoverInfo] = useState({
     visible: false,
@@ -366,14 +404,17 @@ export const TelluxMap: React.FC = () => {
 
         // 繪製紅點
         const reportEntities: any[] = []
+        const categorizedReportEntities: Array<{ entity: any; layer: ReportLayer }> = []
         const { data: reports, error } = await supabase.from('reports').select('*')
 
         if (error) {
           console.error("無法從雲端載入通報資料:", error)
         } else if (reports) {
           reports.forEach((report: any) => {
+            const layer = getReportLayer(report)
             const entity = viewer.entities.add({
               id: `report-${report.id}`,
+              show: reportLayerFiltersRef.current[layer],
               position: [report.lon, report.lat, 80],
               point: {
                 color: getReportColor(report),
@@ -392,8 +433,10 @@ export const TelluxMap: React.FC = () => {
               }
             })
             reportEntities.push(entity)
+            categorizedReportEntities.push({ entity, layer })
           })
         }
+        reportEntitiesRef.current = categorizedReportEntities
 
         const updateReportPointSizes = () => {
           const cameraHeight = viewer.camera.getCurrentHeight()
@@ -604,6 +647,7 @@ export const TelluxMap: React.FC = () => {
         viewerRef.current.destroy()
         viewerRef.current = null
       }
+      reportEntitiesRef.current = []
     }
   }, [])
 
@@ -831,6 +875,62 @@ export const TelluxMap: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* 通報圖層篩選 */}
+      <div
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: 20,
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          padding: "12px 14px",
+          borderRadius: "8px",
+          background: "rgba(17, 24, 39, 0.86)",
+          color: "white",
+          fontSize: "13px",
+          zIndex: 1000,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+        }}
+      >
+        <strong style={{ marginBottom: "2px" }}>Report Layers</strong>
+        {([
+          { layer: 'pending', label: 'Pending', color: '#22c55e' },
+          { layer: 'in-progress', label: 'In Progress', color: '#facc15' },
+          { layer: 'resolved', label: 'Resolved', color: '#ffffff' },
+          { layer: 'urgent', label: 'Urgent Police', color: '#dc2626' }
+        ] as const).map(({ layer, label, color }) => (
+          <label
+            key={layer}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              whiteSpace: "nowrap"
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={reportLayerFilters[layer]}
+              onChange={event => toggleReportLayer(layer, event.target.checked)}
+              style={{ accentColor: color, margin: 0 }}
+            />
+            <span
+              aria-hidden="true"
+              style={{
+                width: "9px",
+                height: "9px",
+                borderRadius: "50%",
+                background: color,
+                border: layer === 'resolved' ? "1px solid #9ca3af" : "none"
+              }}
+            />
+            {label}
+          </label>
+        ))}
+      </div>
 
     </div>
   )
