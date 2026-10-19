@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import './CitizenReport_Chat.css'
 
+const backendUrl =
+  (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
+
 type ChatMessage = {
   id: number
   sender: 'assistant' | 'citizen'
@@ -184,7 +187,7 @@ export default function CitizenReportChat() {
 
       const response =
         await fetch(
-          'http://127.0.0.1:8000/api/chat',
+          `${backendUrl}/api/chat`,
           {
             method: 'POST',
 

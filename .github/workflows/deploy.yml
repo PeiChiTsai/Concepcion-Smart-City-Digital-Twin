@@ -26,11 +26,20 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Verify backend URL
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+        run: |
+          if [ -z "$VITE_BACKEND_URL" ]; then
+            echo "::error::Set the VITE_BACKEND_URL Actions variable to the deployed backend URL."
+            exit 1
+          fi
       - run: npm run build
         env:
           VITE_CESIUM_ION_TOKEN: ${{ secrets.VITE_CESIUM_ION_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

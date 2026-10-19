@@ -1,8 +1,19 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .classifier import classify_message
+
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "BACKEND_CORS_ORIGINS",
+        "http://localhost:5173,https://peichitsai.github.io"
+    ).split(",")
+    if origin.strip()
+]
 
 
 # ==========================================
@@ -24,9 +35,7 @@ app.add_middleware(
 
     CORSMiddleware,
 
-    allow_origins=[
-        "http://localhost:5173"
-    ],
+    allow_origins=cors_origins,
 
     allow_credentials=True,
 

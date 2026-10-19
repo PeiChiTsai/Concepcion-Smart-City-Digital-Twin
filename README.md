@@ -126,6 +126,17 @@ dist
 
 The project can also be deployed to any static hosting provider that supports a Vite build, as long as the required environment variables are configured.
 
+### GitHub Pages frontend and Render backend
+
+GitHub Pages hosts only the frontend. Deploy the FastAPI service separately to Render:
+
+1. Create a Render Web Service connected to this repository's `main` branch.
+2. Set **Root Directory** to `backend`, **Build Command** to `pip install -r requirements.txt`, and **Start Command** to `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+3. Add `GEMINI_API_KEY` to the Render service's environment variables. Set `BACKEND_CORS_ORIGINS` to `http://localhost:5173,https://peichitsai.github.io`.
+4. After Render deploys, copy the service URL (for example, `https://your-service.onrender.com`).
+5. In GitHub, open **Settings → Secrets and variables → Actions → Variables** and create a repository variable named `VITE_BACKEND_URL` with the Render service URL. This URL is public and should be an Actions variable, not a secret.
+6. Push to `main` or manually rerun the GitHub Pages workflow. The frontend build uses `VITE_BACKEND_URL` to call the API.
+
 ## Project structure
 
 ```text
