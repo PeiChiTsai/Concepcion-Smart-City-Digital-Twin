@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient'
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
 //OSM_ASSET_ID = 96188
 //Concepcion_3D_Tiles = 5950827
-const OSM_ASSET_ID = 5950827
+const OSM_ASSET_ID = 6053677
 //Google_Maps_2D_Roadmap = 3830184
 //GOOGLE_MAPS_2D_SATELLITE_ASSET_ID = 3830182
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
