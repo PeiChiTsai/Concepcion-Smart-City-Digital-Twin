@@ -9,6 +9,11 @@ build/
 .env.local
 .env.*.local
 
+backend/.venv/
+__pycache__/
+*.pyc
+backend/data/sav_categories.csv
+
 # --- 作業系統產生的垃圾檔案 ---
 .DS_Store
 Thumbs.db
