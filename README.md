@@ -5,8 +5,9 @@
 Smart reporting and city operations in one dashboard.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF)](https://vitejs.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF)](https://vitejs.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688)](https://fastapi.tiangolo.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E)](https://supabase.com/)
 
 [**Overview**](#why-this-project) · [**Features**](#features) · [**Setup**](#quick-start) · [**Deploy**](#deployment)
@@ -32,54 +33,50 @@ Cities increasingly need tools that make public reporting simple, visible, and a
 - enabling municipal review and triage workflows
 - visualizing city operations through a 3D digital-twin experience
 
+## Architecture
+
+The repository is split into two independently installable and deployable applications:
+
+- `frontend/` — React, TypeScript, and Vite. It serves the web application and currently connects to Supabase for report data.
+- `backend/` — FastAPI service for the citizen assistant, classification, and geocoding.
+
+Each application owns its dependencies and environment configuration. The frontend calls the backend through `VITE_BACKEND_URL`; the backend allows configured browser origins through `BACKEND_CORS_ORIGINS`. Supabase remains the frontend's current report-data provider and can be migrated behind the API separately when needed.
+
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
 - npm
+- Python 3.10+
 - Supabase project access
 - Cesium ion token (recommended for photorealistic map layers)
 
-### 1) Install dependencies
+### 1) Configure and start the frontend
 
-```bash
-npm install
-```
-
-### 2) Configure environment variables
-
-Create a `.env` file in the project root:
-
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_CESIUM_ION_TOKEN=your-cesium-ion-token
-```
-
-You can also use the provided template:
-
-```bash
-cp .env.example .env
-```
-
-### 3) Run locally
-
-```bash
+```powershell
+cd frontend
+npm ci
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 npm run dev
 ```
 
-### 4) Build for production
+Set the Supabase URL and anon key in `frontend/.env`, and add a Cesium ion token if using Cesium-backed layers. The backend URL defaults to the local FastAPI service.
 
-```bash
-npm run build
+If you previously used a repository-root `.env`, move its `VITE_*` values to `frontend/.env` and its `GEMINI_API_KEY` / `BACKEND_CORS_ORIGINS` values to `backend/.env`. Keep both files untracked.
+
+### 2) Configure and start the backend
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+uvicorn app.main:app --reload
 ```
 
-### 5) Preview the production build
-
-```bash
-npm run preview
-```
+Set `GEMINI_API_KEY` in `backend/.env`. Run the frontend and backend in separate terminals.
 
 ## Features
 
@@ -93,22 +90,23 @@ npm run preview
 
 ## Deployment
 
-This is a Vite-based frontend application and can be deployed to static hosting platforms or app platforms that support React builds.
+Deploy the frontend and backend independently. Frontend commands run from `frontend/` and publish `frontend/dist`; the FastAPI application runs from `backend/`. Configure each service using its own environment variables. The frontend's `VITE_BASE_PATH` defaults to `/`; GitHub Pages sets the repository subpath in its workflow.
 
 ### Vercel
 
 1. Push the project to GitHub.
-2. Import the repository in Vercel.
+2. Import the repository in Vercel and set the project root to `frontend`.
 3. Add the following environment variables:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
    - `VITE_CESIUM_ION_TOKEN`
+   - `VITE_BACKEND_URL`
 4. Deploy the app.
 
 ### Netlify
 
 1. Connect the repository to Netlify.
-2. Set the build command to:
+2. Set the base directory to `frontend` and the build command to:
 
 ```bash
 npm run build
@@ -120,11 +118,11 @@ npm run build
 dist
 ```
 
-4. Add the required environment variables in Netlify project settings.
+4. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CESIUM_ION_TOKEN`, and `VITE_BACKEND_URL` in Netlify project settings.
 
 ### Static hosting
 
-The project can also be deployed to any static hosting provider that supports a Vite build, as long as the required environment variables are configured.
+The frontend can also be deployed to any static hosting provider that supports Vite builds. Configure `VITE_BASE_PATH` for the deployment path and `VITE_BACKEND_URL` for the deployed API URL.
 
 ### GitHub Pages frontend and Render backend
 
@@ -141,24 +139,22 @@ GitHub Pages hosts only the frontend. Deploy the FastAPI service separately to R
 
 ```text
 .
-├── public/
-│   └── 404.html
-├── src/
-│   ├── App.tsx
-│   ├── main.tsx
-│   ├── supabaseClient.ts
-│   ├── TelluxMap.tsx
-│   └── pages/
-│       ├── AdminDashboard.tsx
-│       ├── CitizenReport.tsx
-│       └── GovDashboard.tsx
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   ├── .env.example
+│   ├── package.json
+│   ├── package-lock.json
+│   └── vite.config.ts
+├── backend/
+│   ├── app/
+│   ├── data/
+│   ├── .env.example
+│   └── requirements.txt
+├── .github/
+│   └── workflows/
 ├── README.md
-├── .env.example
-└── public/
+└── .gitignore
 ```
 
 ## Supabase setup
@@ -184,6 +180,8 @@ Adjust the schema to suit your municipality’s operational needs and data priva
 - React 19
 - TypeScript
 - Vite
+- FastAPI
+- Python
 - React Router
 - Supabase
 - Cesium / Tellux-style 3D visualization

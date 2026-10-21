@@ -16,10 +16,10 @@ from .geocoder import geocode_location
 # 1. Load environment variables
 # ==========================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 load_dotenv(
-    PROJECT_ROOT / ".env"
+    BACKEND_ROOT / ".env"
 )
 
 
@@ -37,10 +37,7 @@ client = genai.Client(
 # ==========================================
 
 categories = pd.read_csv(
-    PROJECT_ROOT
-    / "backend"
-    / "data"
-    / "sav_categories.csv"
+    BACKEND_ROOT / "data" / "sav_categories.csv"
 )
 
 

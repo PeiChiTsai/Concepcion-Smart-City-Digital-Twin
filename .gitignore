@@ -3,13 +3,15 @@ node_modules/
 # --- 建置產物 ---
 dist/
 build/
- --- 環境變數與機密設定 (最重要！保護 Supabase 與 Cesium Token) ---
+
+# --- 環境變數與機密設定 ---
 #
 .env
 .env.local
 .env.*.local
 
-backend/.venv/
+# --- Python ---
+.venv/
 __pycache__/
 *.pyc
 
