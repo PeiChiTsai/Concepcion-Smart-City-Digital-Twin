@@ -42,6 +42,8 @@ The repository is split into two independently installable and deployable applic
 
 Each application owns its dependencies and environment configuration. The frontend calls the backend through `VITE_BACKEND_URL`; the backend allows configured browser origins through `BACKEND_CORS_ORIGINS`. Supabase remains the frontend's current report-data provider and can be migrated behind the API separately when needed.
 
+![Concepcion Smart City system architecture](docs/SystemArchitecture-React-FastAPI.png)
+
 ## Quick Start
 
 ### Prerequisites
