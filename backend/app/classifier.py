@@ -138,7 +138,12 @@ def classify_message(
     # First message
     # ======================================
 
-    if current_result is None:
+    if not current_result or not current_result.get("category"):
+        selected_location = (
+            current_result.get("location_description", "")
+            if current_result
+            else ""
+        )
 
         prompt = f"""
 You are an AI assistant for a municipal
@@ -168,6 +173,10 @@ IMPORTANT:
 Conversation:
 
 {conversation_text}
+
+Location selected on the map, if any:
+
+{selected_location}
 
 Official SAV categories:
 
@@ -347,9 +356,28 @@ If all required information has been provided:
 
     else:
 
-        result["latitude"] = None
-        result["longitude"] = None
-        result["geocoded_address"] = ""
+        result["latitude"] = (
+            current_result.get("latitude")
+            if current_result
+            else None
+        )
+        result["longitude"] = (
+            current_result.get("longitude")
+            if current_result
+            else None
+        )
+        result["geocoded_address"] = (
+            current_result.get("geocoded_address", "")
+            if current_result
+            else ""
+        )
+
+        if (
+            current_result
+            and not result.get("location_description")
+            and current_result.get("location_description")
+        ):
+            result["location_description"] = current_result["location_description"]
 
 
     return result
