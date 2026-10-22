@@ -3,7 +3,8 @@ import tellux from 'tellux'
 import * as Cesium from 'cesium'
 import * as THREE from 'three'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
-import { supabase } from './supabaseClient' 
+import { supabase } from './supabaseClient'
+import { demoReports } from './demoReports'
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
 //OSM_ASSET_ID = 96188
@@ -190,7 +191,11 @@ function getReportPointSize(cameraHeight: number) {
   return Math.round(Math.min(32, Math.max(8, size)))
 }
 
-export const TelluxMap: React.FC = () => {
+type TelluxMapProps = {
+  readOnlyDemo?: boolean
+}
+
+export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
   const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
@@ -405,11 +410,21 @@ export const TelluxMap: React.FC = () => {
         // 繪製紅點
         const reportEntities: any[] = []
         const categorizedReportEntities: Array<{ entity: any; layer: ReportLayer }> = []
-        const { data: reports, error } = await supabase.from('reports').select('*')
+        let reports = readOnlyDemo ? demoReports : null
+        if (!readOnlyDemo) {
+          if (!supabase) {
+            console.error('Supabase is not configured; real report markers cannot be loaded.')
+          } else {
+            const { data, error } = await supabase.from('reports').select('*')
+            if (error) {
+              console.error("無法從雲端載入通報資料:", error)
+            } else {
+              reports = data
+            }
+          }
+        }
 
-        if (error) {
-          console.error("無法從雲端載入通報資料:", error)
-        } else if (reports) {
+        if (reports) {
           reports.forEach((report: any) => {
             const layer = getReportLayer(report)
             const entity = viewer.entities.add({

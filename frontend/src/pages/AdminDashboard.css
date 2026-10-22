@@ -1,23 +1,340 @@
+.admin-dashboard {
+  --admin-ink: #102a36;
+  --admin-muted: #526d78;
+  --admin-teal: #087f8c;
+  --admin-line: #c5d5da;
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 36px clamp(20px, 5vw, 72px) 56px;
+  background:
+    radial-gradient(ellipse at 82% 4%, rgb(41 179 194 / 10%), transparent 34%),
+    linear-gradient(145deg, #f8fbfc, #edf3f5);
+  color: var(--admin-ink);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.admin-dashboard::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(17 103 123 / 5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(17 103 123 / 5%) 1px, transparent 1px);
+  background-size: 32px 32px;
+  content: '';
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  pointer-events: none;
+}
+
+.admin-dashboard-inner {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
+.admin-dashboard-heading {
+  margin-bottom: 24px;
+  padding: 4px 0 20px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.admin-dashboard-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  color: #176b78;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.admin-dashboard-eyebrow span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #08a7b4;
+  box-shadow: 0 0 0 3px rgb(8 167 180 / 14%), 0 0 12px rgb(8 167 180 / 35%);
+}
+
+.admin-dashboard-heading h1 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 600;
+  letter-spacing: -.055em;
+}
+
+.admin-dashboard-heading > p:last-child {
+  margin: 8px 0 0;
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
 .admin-report-table-container {
-  overflow: auto;
+  overflow: visible;
+  border: 1px solid var(--admin-line);
+  background: rgb(255 255 255 / 90%);
+  box-shadow: 0 12px 32px rgb(22 53 64 / 7%);
+}
+
+.admin-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #1f3540;
+  font-size: 13px;
+  text-align: left;
+}
+
+.admin-report-table th,
+.admin-report-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #dce6e9;
+  color: #1f3540;
+  vertical-align: top;
+}
+
+.admin-report-table th {
+  background: #e7f0f2;
+  color: #315661;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.admin-report-table tbody tr {
+  background: rgb(255 255 255 / 88%);
+}
+
+.admin-report-table tbody tr:hover {
+  background: #f1f8f9;
+}
+
+.admin-report-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-report-id {
+  color: #315661 !important;
+  font-weight: 700;
+}
+
+.admin-report-time,
+.admin-report-phone {
+  color: #607983;
+  font-size: 11px;
+}
+
+.admin-report-category {
+  margin-top: 3px;
+  color: var(--admin-teal);
+  font-weight: 600;
+}
+
+.admin-report-description {
+  max-width: 340px;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.admin-report-urgent {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 7px;
+  border: 1px solid #efb5ba;
+  background: #fff1f2;
+  color: #a62d3a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-report-empty {
+  padding: 24px !important;
+  color: var(--admin-muted) !important;
+  text-align: center;
+}
+
+.admin-report-table select {
+  max-width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #b8ccd2;
+  border-radius: 2px;
+  background: #f8fbfc;
+  color: #1f3540;
+  font: inherit;
+  font-size: 12px;
+}
+
+.admin-report-delete {
+  padding: 7px 11px;
+  border: 1px solid #d98d96;
+  background: #fff1f2;
+  color: #a62d3a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-report-delete:hover {
+  background: #ffe4e7;
+}
+
+.demo-status {
+  color: #526d78;
+  font-size: 11px;
+}
+
+.municipal-demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border: 1px solid #9bcbd0;
+  background: #e8f7f7;
+  color: #145d67;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.municipal-demo-banner strong {
+  letter-spacing: .08em;
+}
+
+.municipal-access-request {
+  display: grid;
+  grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr);
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 24px;
+  padding: 22px;
+  border: 1px solid var(--admin-line);
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 8px 24px rgb(22 53 64 / 5%);
+}
+
+.municipal-access-request h2 {
+  margin: 0 0 8px;
+  color: var(--admin-ink);
+  font-size: 18px;
+  letter-spacing: -.025em;
+}
+
+.municipal-access-request p {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.access-request-form {
+  display: grid;
+  gap: 12px;
+}
+
+.access-request-form label {
+  display: grid;
+  gap: 6px;
+  color: #315661;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.access-request-form input,
+.access-request-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b8ccd2;
+  border-radius: 2px;
+  background: #fbfdfd;
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: normal;
+}
+
+.access-request-form textarea {
+  resize: vertical;
+}
+
+.access-request-form input:focus,
+.access-request-form textarea:focus {
+  border-color: #08a7b4;
+  outline: 2px solid rgb(8 167 180 / 16%);
+}
+
+.access-request-submit {
+  justify-self: start;
+  padding: 10px 16px;
+  border: 1px solid #087f8c;
+  border-radius: 2px;
+  background: #087f8c;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.access-request-submit:hover:not(:disabled) {
+  border-color: #065e68;
+  background: #065e68;
+}
+
+.access-request-submit:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.municipal-access-request .access-request-pending {
+  padding: 12px 14px;
+  border: 1px solid #9bcbd0;
+  background: #e8f7f7;
+  color: #145d67;
+  font-weight: 700;
+}
+
+.municipal-access-request .access-request-email {
+  margin-top: 8px;
+  color: #315661;
+  font-size: 13px;
+}
+
+.municipal-access-request .access-request-success {
+  margin-top: 8px;
+  color: #166534;
+}
+
+.municipal-access-request .access-request-error,
+.admin-dashboard [role='alert'] {
+  color: #b42332;
 }
 
 @media (max-width: 768px) {
-  .admin-report-table-container {
-    max-height: calc(100vh - 150px);
-    max-height: calc(100dvh - 150px);
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-x pan-y;
+  .admin-dashboard {
+    padding: 24px 16px 40px;
+  }
+
+  .municipal-access-request {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
   }
 
   .admin-report-table {
-    min-width: 760px;
+    table-layout: fixed;
+    font-size: 11px;
   }
 
-  .admin-report-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+  .admin-report-table th,
+  .admin-report-table td {
+    padding: 8px 6px;
+    overflow-wrap: anywhere;
   }
 }

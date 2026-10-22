@@ -80,6 +80,54 @@ uvicorn app.main:app --reload
 
 Set `GEMINI_API_KEY` in `backend/.env`. Run the frontend and backend in separate terminals.
 
+## Supabase authentication and municipal access
+
+The frontend uses Supabase Auth for citizen and municipal accounts. New users can register immediately. A newly registered municipal account receives read-only sample data; it cannot query real reports or update/delete records. Real municipal access is granted only by setting trusted `app_metadata` from the Supabase dashboard/SQL Editor. The role a user requests during signup is stored as untrusted user metadata and never grants privileges.
+
+### Supabase project setup
+
+1. In **Authentication → Sign In / Providers → Email**, enable email/password sign-in and user signups. To allow signup to create an active session immediately, turn off **Confirm email**. This means the app does not verify email ownership; use a password reset/verification flow or enable confirmations with a custom SMTP provider before production use.
+2. In **Authentication → URL Configuration**, add your local frontend URL (for example `http://localhost:5173/**`) and deployed frontend URL (for example `https://peichitsai.github.io/Concepcion-Smart-City-Digital-Twin/**`) to the allowed redirect URLs.
+3. Apply `supabase/migrations/20261021000000_auth_and_report_access.sql` in the Supabase SQL Editor. It adds report ownership, enables RLS, removes existing `reports` policies, and installs policies allowing account owners to read their own reports and approved municipal accounts to manage all reports. Anonymous access to `reports` is revoked. Review existing `reports` policies before applying, because this migration intentionally replaces them.
+4. Put the project's URL and anon/publishable key in `frontend/.env` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Add the same project URL and anon key to `backend/.env` as `SUPABASE_URL` and `SUPABASE_ANON_KEY` so FastAPI can verify user sessions. Never put a service-role/secret key in either frontend or backend app configuration.
+
+### Request municipal access
+
+After signing into **City operations** in read-only demo mode, submit the access request form with your organization and reason. The signed-in account email is stored automatically from Supabase Auth; users cannot choose or spoof this value. Requests are private to the submitting account and do not grant access.
+
+Apply `supabase/migrations/20261021220000_municipal_access_requests.sql` in the Supabase SQL Editor. It creates the request table or updates an existing one with the email column, and can be safely re-run.
+
+Review pending requests in the SQL Editor:
+
+```sql
+select
+  r.email,
+  u.raw_user_meta_data ->> 'full_name' as full_name,
+  r.organization,
+  r.reason,
+  r.requested_at
+from public.municipal_access_requests as r
+join auth.users as u on u.id = r.user_id
+where u.raw_app_meta_data ->> 'municipal_approved' is distinct from 'true'
+order by r.requested_at;
+```
+
+### Approve a municipal account
+
+After reviewing the request and verifying the account, run this in the Supabase SQL Editor, replacing the email with the approved account:
+
+```sql
+update auth.users
+set raw_app_meta_data =
+  coalesce(raw_app_meta_data, '{}'::jsonb)
+  || '{"role":"municipal_admin","municipal_approved":true}'::jsonb
+where email = 'approved.staff@example.gov';
+```
+
+The user must sign out and sign back in to receive a token with the updated role. Only trusted administrators should run this approval query. Do not grant roles by updating `raw_user_meta_data`, which users can change themselves.
+
+Supabase Free includes a limited database, storage, egress, and email allowance; check the current [Supabase pricing](https://supabase.com/pricing) and [Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits). AI requests also consume the separate Gemini/API hosting quotas. Disabling email confirmation reduces email use but does not prevent account abuse; monitor quotas and add rate limits before opening a public production service.
+
 ## Features
 
 - Citizens can submit issue reports with contact details and descriptions

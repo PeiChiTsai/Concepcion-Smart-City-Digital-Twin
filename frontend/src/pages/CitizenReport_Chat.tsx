@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import { supabase } from '../supabaseClient'
+import ReportLocationMap from './ReportLocationMap'
 import './CitizenReport_Chat.css'
 
 const backendUrl =
@@ -53,6 +55,15 @@ export default function CitizenReportChat() {
   const [input, setInput] =
     useState('')
 
+  const [contactName, setContactName] =
+    useState('')
+
+  const [contactPhone, setContactPhone] =
+    useState('')
+
+  const [contactEmail, setContactEmail] =
+    useState('')
+
   const [isLoading, setIsLoading] =
     useState(false)
 
@@ -98,6 +109,36 @@ export default function CitizenReportChat() {
 
   const [currentResult, setCurrentResult] =
     useState<APIResult | null>(null)
+
+  const handleMapLocationSelect = (selectedLatitude: number, selectedLongitude: number) => {
+    setLatitude(selectedLatitude)
+    setLongitude(selectedLongitude)
+    setLocation('Selected on map')
+    setCurrentResult((current) => ({
+      ...current,
+      location_description: 'Selected on map',
+      latitude: selectedLatitude,
+      longitude: selectedLongitude,
+    }))
+  }
+
+  const handleDeviceLocationSelect = (
+    selectedLatitude: number,
+    selectedLongitude: number,
+    isInitialLocation: boolean,
+  ) => {
+    if (isInitialLocation && latitude !== null && longitude !== null) return
+
+    setLatitude(selectedLatitude)
+    setLongitude(selectedLongitude)
+    setLocation('Current device location')
+    setCurrentResult((current) => ({
+      ...current,
+      location_description: 'Current device location',
+      latitude: selectedLatitude,
+      longitude: selectedLongitude,
+    }))
+  }
 
 
   // ==========================================
@@ -180,6 +221,13 @@ export default function CitizenReportChat() {
 
 
     try {
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Add the project URL and anon key to frontend/.env.')
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      if (!session) throw new Error('Please sign in again to use the citizen assistant.')
 
       // --------------------------------------
       // Call FastAPI
@@ -194,6 +242,7 @@ export default function CitizenReportChat() {
             headers: {
               'Content-Type':
                 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
             },
 
             body: JSON.stringify({
@@ -605,13 +654,60 @@ export default function CitizenReportChat() {
 
 
           {/* ===================================
-              CHAT CARD
+              CONTACT DETAILS AND CHAT
           ==================================== */}
 
-          <section
-            className="citizen-chat-card"
-            aria-label="Citizen report conversation"
-          >
+          <div className="citizen-chat-main-column">
+            <section
+              className="citizen-chat-contact-card"
+              aria-labelledby="citizen-chat-contact-title"
+            >
+              <div className="citizen-chat-contact-heading">
+                <div>
+                  <h2 id="citizen-chat-contact-title">Contact details</h2>
+                  <p>Optional · These details stay on this page and are not sent to the AI assistant.</p>
+                </div>
+              </div>
+              <div className="citizen-chat-contact-fields">
+                <label>
+                  <span>NAME</span>
+                  <input
+                    autoComplete="name"
+                    name="contact-name"
+                    onChange={(event) => setContactName(event.target.value)}
+                    placeholder="Your name"
+                    value={contactName}
+                  />
+                </label>
+                <label>
+                  <span>PHONE</span>
+                  <input
+                    autoComplete="tel"
+                    name="contact-phone"
+                    onChange={(event) => setContactPhone(event.target.value)}
+                    placeholder="Your phone number"
+                    type="tel"
+                    value={contactPhone}
+                  />
+                </label>
+                <label>
+                  <span>EMAIL</span>
+                  <input
+                    autoComplete="email"
+                    name="contact-email"
+                    onChange={(event) => setContactEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    type="email"
+                    value={contactEmail}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section
+              className="citizen-chat-card"
+              aria-label="Citizen report conversation"
+            >
 
 
             {/* ---------------------------------
@@ -911,13 +1007,37 @@ export default function CitizenReportChat() {
               personal information in this demo.
             </div>
 
-          </section>
+            </section>
+          </div>
 
 
 
           {/* ===================================
               REPORT SUMMARY
           ==================================== */}
+
+          <div className="citizen-chat-summary-column">
+            <section className="citizen-chat-map-card" aria-labelledby="citizen-chat-map-title">
+              <div className="citizen-chat-map-heading">
+                <div>
+                  <h2 id="citizen-chat-map-title">Select a location</h2>
+                  <p>
+                    {latitude !== null && longitude !== null
+                      ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                      : 'AI will focus the map when it finds a location. You can also click the map.'}
+                  </p>
+                </div>
+                {latitude !== null && longitude !== null && (
+                  <span className="citizen-chat-map-selected">PIN SET</span>
+                )}
+              </div>
+              <ReportLocationMap
+                latitude={latitude}
+                longitude={longitude}
+                onDeviceLocation={handleDeviceLocationSelect}
+                onLocationSelect={handleMapLocationSelect}
+              />
+            </section>
 
           <aside
             className="citizen-chat-summary"
@@ -1372,7 +1492,7 @@ export default function CitizenReportChat() {
                   {latitude !== null &&
                     longitude !== null
 
-                    ? 'The location has been geocoded and coordinates are available.'
+                  ? 'Coordinates are set and marked on the map.'
 
                     : location
 
@@ -1410,6 +1530,7 @@ export default function CitizenReportChat() {
             </div>
 
           </aside>
+          </div>
 
         </div>
 

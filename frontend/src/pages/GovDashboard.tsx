@@ -1,7 +1,11 @@
 import React from 'react'
 import { TelluxMap } from '../TelluxMap'
 
-export default function GovDashboard() {
+type GovDashboardProps = {
+  readOnlyDemo?: boolean
+}
+
+export default function GovDashboard({ readOnlyDemo = false }: GovDashboardProps) {
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       
@@ -18,7 +22,7 @@ export default function GovDashboard() {
         
         {/* 用 span 把文字包起來，方便排版與調整字體 */}
         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
-          Concepcion Smart City Digital Twin Dashboard
+          Concepcion Smart City Digital Twin Dashboard{readOnlyDemo ? ' · Read-only demo' : ''}
         </span>
         
         {/* <button 
@@ -48,7 +52,7 @@ export default function GovDashboard() {
       
       {/* 地圖區塊：自動填滿剩下的所有空間 */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <TelluxMap />
+        <TelluxMap readOnlyDemo={readOnlyDemo} />
       </div>
     </div>
   )

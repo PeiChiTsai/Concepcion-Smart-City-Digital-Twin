@@ -1,6 +1,7 @@
 import os
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -76,7 +77,49 @@ def root():
 # ==========================================
 
 @app.post("/api/chat")
-def chat(request: ChatRequest):
+def chat(
+    request: ChatRequest,
+    authorization: str | None = Header(default=None),
+):
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
+    if not supabase_url or not supabase_anon_key:
+        raise HTTPException(
+            status_code=503,
+            detail="The backend Supabase authentication settings are not configured.",
+        )
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Sign in to use the citizen assistant.",
+        )
+
+    try:
+        auth_response = httpx.get(
+            f"{supabase_url}/auth/v1/user",
+            headers={
+                "apikey": supabase_anon_key,
+                "Authorization": authorization,
+            },
+            timeout=5.0,
+        )
+    except httpx.RequestError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify the Supabase session right now.",
+        ) from error
+
+    if auth_response.status_code in (401, 403):
+        raise HTTPException(
+            status_code=401,
+            detail="Your session is invalid or expired. Please sign in again.",
+        )
+    if not auth_response.is_success:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase could not verify the current session.",
+        )
 
     history = list(
         request.conversation_history

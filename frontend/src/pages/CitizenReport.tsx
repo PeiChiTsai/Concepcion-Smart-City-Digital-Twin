@@ -247,7 +247,20 @@ export default function CitizenReport() {
     if (!reportText) return alert("Please key in your statement.")
     if (!latitude || !longitude) return alert("Please select a location on the map.")
 
+    if (!supabase) {
+      alert("Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env.")
+      return
+    }
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !session) {
+      console.error("Failed to verify the citizen session:", sessionError)
+      alert("Please sign in again before submitting a report.")
+      return
+    }
+
     const newReport = {
+      user_id: session.user.id,
       name: name || 'Anonymous',
       phone: phone || 'N/A',
       email: email || 'N/A',
