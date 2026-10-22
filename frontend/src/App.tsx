@@ -6,6 +6,7 @@ import CitizenReportChat from './pages/CitizenReport_Chat'
 import GovDashboard from './pages/GovDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import HomePage from './pages/HomePage'
+import AboutPage from './pages/AboutPage'
 import MunicipalAccess from './pages/MunicipalAccess'
 import { supabase, supabaseConfigured } from './supabaseClient'
 
@@ -128,6 +129,7 @@ function AppContent() {
           <span className="app-brand-name">CONCEPCIÓN<span className="app-brand-light">SMART CITY</span></span>
         </Link>
         <div className="app-nav-links">
+          <NavLink to="/about">About</NavLink>
           {/* <NavLink to="/report">Citizen report</NavLink> */}
           <NavLink to="/report-chat">AI assistant</NavLink>
           <NavLink to={user ? '/dashboard' : '/municipal-access'}>3D digital twin</NavLink>
@@ -163,6 +165,7 @@ function AppContent() {
         )}
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/citizen-access" element={user ? <Navigate to="/report-chat" replace /> : <MunicipalAccess role="citizen" />} />
           <Route path="/report" element={<CitizenRoute authLoading={authLoading} user={user}><CitizenReport /></CitizenRoute>} />
           <Route path="/report-chat" element={<CitizenRoute authLoading={authLoading} user={user}><CitizenReportChat /></CitizenRoute>} />
