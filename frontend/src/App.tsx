@@ -132,7 +132,7 @@ function AppContent() {
           <NavLink to="/about">About</NavLink>
           {/* <NavLink to="/report">Citizen report</NavLink> */}
           <NavLink to="/report-chat">AI assistant</NavLink>
-          <NavLink to={user ? '/dashboard' : '/municipal-access'}>3D digital twin</NavLink>
+          <NavLink to="/dashboard">3D digital twin</NavLink>
           <NavLink to={user ? '/admin' : '/municipal-access'}>City operations</NavLink>
         </div>
         {user ? (
@@ -173,11 +173,10 @@ function AppContent() {
             path="/municipal-access"
             element={user ? <Navigate to="/dashboard" replace /> : <MunicipalAccess role="municipal" />}
           />
-          <Route path="/dashboard" element={
-            <MunicipalRoute authLoading={authLoading} user={user}>
-              <GovDashboard readOnlyDemo={!isMunicipalApproved} />
-            </MunicipalRoute>
-          } />
+          <Route
+            path="/dashboard"
+            element={<GovDashboard readOnlyDemo={authLoading || !isMunicipalApproved} />}
+          />
           <Route path="/admin" element={
             <MunicipalRoute authLoading={authLoading} user={user}>
               <AdminDashboard readOnlyDemo={!isMunicipalApproved} />
