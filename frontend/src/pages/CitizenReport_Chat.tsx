@@ -17,19 +17,27 @@ type ConversationStep = 'chat' | 'complete'
 type APIResult = {
   category?: string
   department?: string
+  responsible_department?: string
 
+  address?: string
   location_description?: string
+  geocoded_address?: string
+  coordinates?: {
+    latitude: number
+    longitude: number
+  } | null
 
   latitude?: number | null
   longitude?: number | null
 
+  event_time?: string
+  additional_detail?: string
+  emergency_notification_needed?: boolean
+  emergency_notification_reason?: string
+
   missing_information?: string
 
   follow_up_question?: string
-
-  incident_time?: string
-
-  additional_detail?: string
 }
 
 const initialMessages: ChatMessage[] = [
@@ -37,7 +45,7 @@ const initialMessages: ChatMessage[] = [
     id: 1,
     sender: 'assistant',
     text:
-      "Hello! I'm here to help you report an issue to the City of Concepción. Please describe what is happening in your own words.",
+      "Hello! I'll help you prepare your report and gather any details still needed.",
   },
 ]
 
@@ -55,6 +63,12 @@ export default function CitizenReportChat() {
   const [input, setInput] =
     useState('')
 
+  const [issueDraft, setIssueDraft] =
+    useState('')
+
+  const [hasStartedConversation, setHasStartedConversation] =
+    useState(false)
+
   const [contactName, setContactName] =
     useState('')
 
@@ -66,6 +80,15 @@ export default function CitizenReportChat() {
 
   const [isLoading, setIsLoading] =
     useState(false)
+
+  const [isSubmittingReport, setIsSubmittingReport] =
+    useState(false)
+
+  const [submissionError, setSubmissionError] =
+    useState('')
+
+  const [submittedReportId, setSubmittedReportId] =
+    useState<number | null>(null)
 
 
   // ==========================================
@@ -99,6 +122,15 @@ export default function CitizenReportChat() {
   const [additionalDetail, setAdditionalDetail] =
     useState('')
 
+  const [emergencyNotificationNeeded, setEmergencyNotificationNeeded] =
+    useState(false)
+
+  const [emergencyAssessmentComplete, setEmergencyAssessmentComplete] =
+    useState(false)
+
+  const [emergencyNotificationReason, setEmergencyNotificationReason] =
+    useState('')
+
 
   // ==========================================
   // Conversation state
@@ -113,9 +145,10 @@ export default function CitizenReportChat() {
   const handleMapLocationSelect = (selectedLatitude: number, selectedLongitude: number) => {
     setLatitude(selectedLatitude)
     setLongitude(selectedLongitude)
-    setLocation('Selected on map')
+    setLocation('')
     setCurrentResult((current) => ({
       ...current,
+      address: '',
       location_description: 'Selected on map',
       latitude: selectedLatitude,
       longitude: selectedLongitude,
@@ -131,9 +164,10 @@ export default function CitizenReportChat() {
 
     setLatitude(selectedLatitude)
     setLongitude(selectedLongitude)
-    setLocation('Current device location')
+    setLocation('')
     setCurrentResult((current) => ({
       ...current,
+      address: '',
       location_description: 'Current device location',
       latitude: selectedLatitude,
       longitude: selectedLongitude,
@@ -193,14 +227,7 @@ export default function CitizenReportChat() {
   // Send message to FastAPI
   // ==========================================
 
-  const handleSend = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault()
-
-    const answer =
-      input.trim()
-
+  const sendMessage = async (answer: string) => {
     if (!answer || isLoading) {
       return
     }
@@ -307,21 +334,19 @@ export default function CitizenReportChat() {
       }
 
 
-      if (result.department) {
+      if (result.responsible_department || result.department) {
 
         setDepartment(
-          result.department
+          result.responsible_department || result.department || ''
         )
 
       }
 
 
-      if (
-        result.location_description
-      ) {
+      if (result.address || result.location_description) {
 
         setLocation(
-          result.location_description
+          result.address || result.location_description || ''
         )
 
       }
@@ -360,12 +385,10 @@ export default function CitizenReportChat() {
       }
 
 
-      if (
-        result.incident_time
-      ) {
+      if (result.event_time) {
 
         setIncidentTime(
-          result.incident_time
+          result.event_time
         )
 
       }
@@ -379,6 +402,15 @@ export default function CitizenReportChat() {
           result.additional_detail
         )
 
+      }
+
+      if (result.emergency_notification_needed !== undefined) {
+        setEmergencyNotificationNeeded(result.emergency_notification_needed)
+        setEmergencyAssessmentComplete(true)
+      }
+
+      if (result.emergency_notification_reason !== undefined) {
+        setEmergencyNotificationReason(result.emergency_notification_reason)
       }
 
 
@@ -488,6 +520,114 @@ export default function CitizenReportChat() {
     }
   }
 
+  const handleSend = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void sendMessage(input.trim())
+  }
+
+  const handleInitialDescriptionSubmit = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault()
+    const initialDescription = issueDraft.trim()
+    if (!initialDescription || isLoading) return
+
+    setDescription(initialDescription)
+    setHasStartedConversation(true)
+    void sendMessage(initialDescription)
+  }
+
+  const handleSubmitReport = async () => {
+    if (isSubmittingReport || submittedReportId !== null) return
+    setSubmissionError('')
+
+    if (!supabase) {
+      setSubmissionError('Supabase is not configured. Please contact the site administrator.')
+      return
+    }
+    if (!category) {
+      setSubmissionError('The report is missing a category. Please restart the conversation and try again.')
+      return
+    }
+    if (!location.trim()) {
+      setSubmissionError('Confirm a street address or nearby landmark in the conversation before submitting.')
+      return
+    }
+    if (latitude === null || longitude === null) {
+      setSubmissionError('Select a location on the map before submitting your report.')
+      return
+    }
+    if (!incidentTime.trim()) {
+      setSubmissionError('Confirm when the event happened or when you first noticed it before submitting.')
+      return
+    }
+    if (!emergencyAssessmentComplete) {
+      setSubmissionError('The emergency assessment is not complete. Continue the AI conversation before submitting.')
+      return
+    }
+
+    setIsSubmittingReport(true)
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      if (!session) throw new Error('Please sign in again before submitting your report.')
+
+      const citizenMessages = conversationHistory
+        .filter((message) => message.role === 'citizen')
+        .map((message) => String(message.content ?? '').trim())
+        .filter(Boolean)
+      const reportText = citizenMessages.length > 0
+        ? citizenMessages.join('\n\n')
+        : description.trim()
+      const address = location.trim()
+      const reporterInfo = {
+        name: contactName.trim() || 'Anonymous',
+        phone: contactPhone.trim() || 'N/A',
+        email: contactEmail.trim() || session.user.email || 'N/A',
+      }
+      const coordinates = { latitude, longitude }
+
+      const { data, error } = await supabase
+        .from('reports')
+        .insert({
+          user_id: session.user.id,
+          ...reporterInfo,
+          reporter_info: reporterInfo,
+          category,
+          department: department || null,
+          responsible_department: department || null,
+          is_urgent_police: false,
+          emergency_notification_needed: emergencyNotificationNeeded,
+          emergency_notification_reason: emergencyNotificationReason || null,
+          text: reportText,
+          details: reportText,
+          address,
+          location_description: address,
+          geocoded_address: currentResult?.geocoded_address || null,
+          coordinates,
+          event_time: incidentTime || null,
+          incident_time: incidentTime || null,
+          additional_detail: additionalDetail || null,
+          lat: latitude,
+          lon: longitude,
+          status: 'pending',
+          time: new Date().toLocaleString(),
+        })
+        .select('id')
+        .single()
+
+      if (error) throw error
+      setSubmittedReportId(data.id)
+    } catch (error) {
+      console.error('Failed to submit citizen chat report:', error)
+      setSubmissionError(error instanceof Error
+        ? error.message
+        : 'Unable to submit the report. Please try again.')
+    } finally {
+      setIsSubmittingReport(false)
+    }
+  }
+
 
   // ==========================================
   // Start a new report
@@ -507,7 +647,14 @@ export default function CitizenReportChat() {
 
     setInput('')
 
+    setIssueDraft('')
+
+    setHasStartedConversation(false)
+
     setIsLoading(false)
+    setIsSubmittingReport(false)
+    setSubmissionError('')
+    setSubmittedReportId(null)
 
 
     // Report information
@@ -529,6 +676,10 @@ export default function CitizenReportChat() {
     setIncidentTime('')
 
     setAdditionalDetail('')
+
+    setEmergencyNotificationNeeded(false)
+    setEmergencyAssessmentComplete(false)
+    setEmergencyNotificationReason('')
 
 
     // Conversation
@@ -569,6 +720,8 @@ export default function CitizenReportChat() {
     Boolean(incidentTime),
 
     Boolean(additionalDetail),
+
+    emergencyAssessmentComplete,
 
   ]
 
@@ -638,7 +791,7 @@ export default function CitizenReportChat() {
 
             <span />
 
-            Demo · Nothing is submitted
+            Submit completed reports to city services
 
           </div>
 
@@ -665,7 +818,7 @@ export default function CitizenReportChat() {
               <div className="citizen-chat-contact-heading">
                 <div>
                   <h2 id="citizen-chat-contact-title">Contact details</h2>
-                  <p>Optional · These details stay on this page and are not sent to the AI assistant.</p>
+                  <p>Optional · Saved with your report and not sent to the AI assistant.</p>
                 </div>
               </div>
               <div className="citizen-chat-contact-fields">
@@ -704,6 +857,34 @@ export default function CitizenReportChat() {
               </div>
             </section>
 
+            {!hasStartedConversation && (
+              <form
+                className="citizen-chat-issue-form"
+                onSubmit={handleInitialDescriptionSubmit}
+              >
+                <label htmlFor="citizen-chat-initial-description">
+                  <span>WHAT WOULD YOU LIKE TO REPORT?</span>
+                  <textarea
+                    id="citizen-chat-initial-description"
+                    maxLength={2000}
+                    onChange={(event) => setIssueDraft(event.target.value)}
+                    placeholder="Describe the issue, including what happened and where, if you know."
+                    required
+                    rows={4}
+                    value={issueDraft}
+                  />
+                </label>
+                <button
+                  disabled={!issueDraft.trim() || isLoading}
+                  type="submit"
+                >
+                  {isLoading ? 'Starting conversation...' : 'Start conversation'}
+                  <span aria-hidden="true">↑</span>
+                </button>
+              </form>
+            )}
+
+            {hasStartedConversation && (
             <section
               className="citizen-chat-card"
               aria-label="Citizen report conversation"
@@ -924,18 +1105,36 @@ export default function CitizenReportChat() {
               ---------------------------------- */}
 
               {step === 'complete' && (
-
-                <button
-                  type="button"
-                  className="citizen-chat-new-report"
-                  onClick={
-                    startNewReport
-                  }
-                >
-
-                  Start a new report
-
-                </button>
+                <div className="citizen-chat-completion-actions">
+                  {submittedReportId !== null ? (
+                    <p className="citizen-chat-submit-success" role="status">
+                      Report #{submittedReportId} was submitted successfully.
+                    </p>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="citizen-chat-submit-report"
+                        disabled={isSubmittingReport}
+                        onClick={handleSubmitReport}
+                      >
+                        {isSubmittingReport ? 'Submitting...' : 'Submit report'}
+                      </button>
+                      {submissionError && (
+                        <p className="citizen-chat-submit-error" role="alert">
+                          {submissionError}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="citizen-chat-new-report"
+                    onClick={startNewReport}
+                  >
+                    Start a new report
+                  </button>
+                </div>
 
               )}
 
@@ -1008,6 +1207,7 @@ export default function CitizenReportChat() {
             </div>
 
             </section>
+            )}
           </div>
 
 
@@ -1159,7 +1359,7 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    DEPARTMENT
+                    RESPONSIBLE DEPARTMENT
                   </span>
 
 
@@ -1255,7 +1455,7 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    LOCATION
+                    ADDRESS
                   </span>
 
 
@@ -1438,6 +1638,24 @@ export default function CitizenReportChat() {
 
               </div>
 
+              <div className="citizen-chat-summary-field">
+                <span className="citizen-chat-field-icon" aria-hidden="true">!</span>
+                <div>
+                  <span className="citizen-chat-field-label">EMERGENCY NOTIFICATION</span>
+                  <p>
+                    {!emergencyAssessmentComplete
+                      ? 'Waiting for assessment'
+                      : emergencyNotificationNeeded
+                        ? `${emergencyNotificationReason || 'Immediate notification recommended'} · not sent`
+                        : 'Not required'}
+                  </p>
+                </div>
+                <span
+                  className={`citizen-chat-field-status ${emergencyAssessmentComplete ? 'is-filled' : ''}`}
+                  aria-label={emergencyAssessmentComplete ? 'Assessed' : 'Not assessed'}
+                />
+              </div>
+
             </div>
 
 
@@ -1522,9 +1740,8 @@ export default function CitizenReportChat() {
 
 
               <p>
-                This is an interface preview.
-                Your conversation is not saved
-                or sent to city services.
+                Your report details and answers are saved only after you select Submit report.
+                AI assistant messages are not stored. Emergency notifications are not sent automatically.
               </p>
 
             </div>

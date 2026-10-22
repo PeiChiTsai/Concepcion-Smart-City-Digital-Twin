@@ -140,7 +140,8 @@ def classify_message(
 
     if not current_result or not current_result.get("category"):
         selected_location = (
-            current_result.get("location_description", "")
+            current_result.get("address")
+            or current_result.get("location_description", "")
             if current_result
             else ""
         )
@@ -161,12 +162,23 @@ IMPORTANT:
 - Do not invent a new category.
 - The category must be written exactly as it
   appears in the SAV category list.
-- Extract the location description if the
-  citizen provides one.
-- Identify important information missing
-  from the report.
-- If important information is missing,
-  ask ONE clear follow-up question.
+- Collect a specific, mappable address or
+  nearby landmark. Ask a follow-up until the
+  citizen confirms a usable location.
+- Determine when the event happened, or when
+  the citizen first noticed it. Ask if unknown.
+- Ask whether the citizen has any additional
+  details to include; an empty value means
+  there are none.
+- Assess whether the situation needs immediate
+  emergency notification. Set the flag only
+  for an immediate threat requiring urgent
+  response; this flag does not send a notice.
+- Identify which required report information
+  is still missing.
+- If information is missing, ask ONE clear
+  follow-up question about the most important
+  missing item.
 - The follow-up question must be in the same
   language as the citizen.
 
@@ -186,7 +198,11 @@ Return JSON with exactly these fields:
 
 {{
     "category": "...",
-    "location_description": "...",
+    "address": "...",
+    "event_time": "...",
+    "additional_detail": "...",
+    "emergency_notification_needed": false,
+    "emergency_notification_reason": "...",
     "missing_information": "...",
     "follow_up_question": "..."
 }}
@@ -216,9 +232,17 @@ Current category:
 Current location description:
 
 {current_result.get(
-    "location_description",
-    ""
+    "address",
+    current_result.get("location_description", "")
 )}
+
+Current event time:
+
+{current_result.get("event_time", "")}
+
+Current additional details:
+
+{current_result.get("additional_detail", "")}
 
 Information currently missing:
 
@@ -236,10 +260,23 @@ IMPORTANT:
 - Keep the existing category unless the
   conversation clearly indicates that it
   was incorrect.
-- Extract any newly provided location.
+- Extract and confirm a specific, mappable
+  address or nearby landmark. Keep asking if
+  the location is still unclear.
+- Determine when the event happened or when
+  the citizen first noticed it. Keep asking
+  if this is unknown.
+- Ask whether the citizen has any additional
+  details to include; an empty value means
+  there are none.
+- Assess whether immediate emergency
+  notification is needed. Set the flag only
+  for an immediate threat requiring urgent
+  response; this flag does not send a notice.
 - Do not invent information.
-- If information is still missing, ask
-  ONE clear follow-up question.
+- If required information is still missing,
+  ask ONE clear follow-up question about the
+  most important missing item.
 - The follow-up question must be in the
   same language as the citizen.
 
@@ -247,7 +284,11 @@ Return JSON with exactly these fields:
 
 {{
     "category": "...",
-    "location_description": "...",
+    "address": "...",
+    "event_time": "...",
+    "additional_detail": "...",
+    "emergency_notification_needed": false,
+    "emergency_notification_reason": "...",
     "missing_information": "...",
     "follow_up_question": "..."
 }}
@@ -284,7 +325,23 @@ If all required information has been provided:
                         "type": "string"
                     },
 
-                    "location_description": {
+                    "address": {
+                        "type": "string"
+                    },
+
+                    "event_time": {
+                        "type": "string"
+                    },
+
+                    "additional_detail": {
+                        "type": "string"
+                    },
+
+                    "emergency_notification_needed": {
+                        "type": "boolean"
+                    },
+
+                    "emergency_notification_reason": {
                         "type": "string"
                     },
 
@@ -299,7 +356,11 @@ If all required information has been provided:
 
                 "required": [
                     "category",
-                    "location_description",
+                    "address",
+                    "event_time",
+                    "additional_detail",
+                    "emergency_notification_needed",
+                    "emergency_notification_reason",
                     "missing_information",
                     "follow_up_question"
                 ]
@@ -317,9 +378,31 @@ If all required information has been provided:
     # Official department
     # ======================================
 
-    result["department"] = get_department(
-        result["category"]
+    result["department"] = get_department(result["category"])
+    result["responsible_department"] = result["department"]
+
+    if current_result:
+        for field in (
+            "address",
+            "event_time",
+            "additional_detail",
+            "emergency_notification_reason",
+        ):
+            if not result.get(field):
+                result[field] = current_result.get(field, "")
+
+    result["emergency_notification_needed"] = bool(
+        result.get("emergency_notification_needed")
     )
+
+    if result.get("address"):
+        result["location_description"] = result["address"]
+    elif current_result:
+        result["address"] = current_result.get(
+            "address",
+            current_result.get("location_description", ""),
+        )
+        result["location_description"] = result["address"]
 
 
     # ======================================
@@ -328,56 +411,80 @@ If all required information has been provided:
 
     location = None
 
-    if result.get(
-        "location_description"
-    ):
-
-        location = geocode_location(
-
-            result[
-                "location_description"
-            ]
+    address = result.get("address", "")
+    map_location_selected = bool(
+        current_result
+        and current_result.get("location_description")
+        in {"Current device location", "Selected on map"}
+    )
+    can_reuse_coordinates = bool(
+        current_result
+        and (
+            (map_location_selected and not address)
+            or address == current_result.get("address")
         )
-
+    )
+    if address in {"Current device location", "Selected on map"}:
+        address = ""
+        result["address"] = ""
+        can_reuse_coordinates = bool(current_result and map_location_selected)
+    if address:
+        location = geocode_location(address)
 
     if location:
 
-        result["latitude"] = (
-            location["latitude"]
-        )
+        result["latitude"] = round(location["latitude"], 6)
 
-        result["longitude"] = (
-            location["longitude"]
-        )
+        result["longitude"] = round(location["longitude"], 6)
 
         result["geocoded_address"] = (
             location.get("address", "")
         )
 
     else:
-
         result["latitude"] = (
             current_result.get("latitude")
-            if current_result
+            if can_reuse_coordinates
             else None
         )
         result["longitude"] = (
             current_result.get("longitude")
-            if current_result
+            if can_reuse_coordinates
             else None
         )
         result["geocoded_address"] = (
             current_result.get("geocoded_address", "")
-            if current_result
+            if current_result and address == current_result.get("address")
             else ""
         )
 
-        if (
-            current_result
-            and not result.get("location_description")
-            and current_result.get("location_description")
-        ):
-            result["location_description"] = current_result["location_description"]
+    if not result.get("address"):
+        result["missing_information"] = "A specific address or nearby landmark is needed."
+        result["follow_up_question"] = (
+            "Could you provide a street address or a nearby landmark?"
+        )
+    elif result["latitude"] is None or result["longitude"] is None:
+        result["missing_information"] = "The address could not be located on the map."
+        result["follow_up_question"] = (
+            "I couldn't find that address on the map. Could you provide a nearby street or landmark?"
+        )
+    elif not result.get("event_time"):
+        result["missing_information"] = (
+            "The event time or when it was first noticed is needed."
+        )
+        result["follow_up_question"] = (
+            "When did this happen, or when did you first notice it?"
+        )
+
+    result["location_description"] = result.get("address", "")
+    result["coordinates"] = (
+        {
+            "latitude": result["latitude"],
+            "longitude": result["longitude"],
+        }
+        if result["latitude"] is not None and result["longitude"] is not None
+        else None
+    )
 
 
     return result

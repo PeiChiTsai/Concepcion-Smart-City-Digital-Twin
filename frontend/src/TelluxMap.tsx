@@ -153,17 +153,30 @@ function normalizeReportStatus(status: unknown) {
   return String(status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
 }
 
-function getReportLayer(report: { status?: unknown; is_urgent_police?: unknown }): ReportLayer {
+function getReportLayer(report: {
+  status?: unknown
+  is_urgent_police?: unknown
+  emergency_notification_needed?: unknown
+}): ReportLayer {
   const status = normalizeReportStatus(report.status)
 
   if (status === 'resolved') return 'resolved'
-  if (report.is_urgent_police === true || report.is_urgent_police === 'true') return 'urgent'
+  if (
+    report.emergency_notification_needed === true
+    || report.emergency_notification_needed === 'true'
+    || report.is_urgent_police === true
+    || report.is_urgent_police === 'true'
+  ) return 'urgent'
   if (status === 'in-progress') return 'in-progress'
 
   return 'pending'
 }
 
-function getReportColor(report: { status?: unknown; is_urgent_police?: unknown }) {
+function getReportColor(report: {
+  status?: unknown
+  is_urgent_police?: unknown
+  emergency_notification_needed?: unknown
+}) {
   const colors: Record<ReportLayer, string> = {
     pending: '#22c55e',
     'in-progress': '#facc15',
@@ -234,7 +247,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
     text: string
     time: string
     category?: string
-    isUrgentPolice?: boolean
+    emergencyNotificationNeeded?: boolean
     status?: string
     name?: string
     phone?: string
@@ -444,7 +457,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
                 name: report.name,
                 phone: report.phone,
                 email: report.email,
-                isUrgentPolice: report.is_urgent_police
+                emergencyNotificationNeeded: report.emergency_notification_needed
+                  || report.is_urgent_police
               }
             })
             reportEntities.push(entity)
@@ -600,7 +614,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
                 name: targetReport.name,
                 phone: targetReport.phone,
                 email: targetReport.email,
-                isUrgentPolice: targetReport.is_urgent_police,
+                emergencyNotificationNeeded: targetReport.emergency_notification_needed
+                  || targetReport.is_urgent_police,
                 status: targetReport.status
               })
               setPopupFeature(null) 
@@ -790,11 +805,11 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             right: 20,
             background: `${getReportColor({
               status: popupReport.status,
-              is_urgent_police: popupReport.isUrgentPolice
+              emergency_notification_needed: popupReport.emergencyNotificationNeeded
             })}cc`,
             color: getReportColor({
               status: popupReport.status,
-              is_urgent_police: popupReport.isUrgentPolice
+              emergency_notification_needed: popupReport.emergencyNotificationNeeded
             }) === "#dc2626" ? "white" : "#111827",
             padding: "16px",
             borderRadius: "8px",
@@ -834,9 +849,9 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             </p>
 
             {/* 是否緊急通報警局 */}
-            {popupReport.isUrgentPolice && (
+            {popupReport.emergencyNotificationNeeded && (
               <p style={{ margin: 0, background: "rgba(0,0,0,0.15)", padding: "4px 8px", borderRadius: "4px", fontWeight: "bold" }}>
-                🚨 Urgent: Police Notified
+                Emergency notification recommended · not sent
               </p>
             )}
 
@@ -914,7 +929,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
           { layer: 'pending', label: 'Pending', color: '#22c55e' },
           { layer: 'in-progress', label: 'In Progress', color: '#facc15' },
           { layer: 'resolved', label: 'Resolved', color: '#ffffff' },
-          { layer: 'urgent', label: 'Urgent Police', color: '#dc2626' }
+          { layer: 'urgent', label: 'Emergency Notification Needed', color: '#dc2626' }
         ] as const).map(({ layer, label, color }) => (
           <label
             key={layer}

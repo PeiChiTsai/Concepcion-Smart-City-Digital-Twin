@@ -264,8 +264,8 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
                       <td>
                         <div className="admin-report-time">{report.time}</div>
                         <div className="admin-report-category">{report.category}</div>
-                        {report.is_urgent_police && (
-                          <span className="admin-report-urgent">Urgent Report</span>
+                        {(report.emergency_notification_needed || report.is_urgent_police) && (
+                          <span className="admin-report-urgent">Emergency notification needed</span>
                         )}
                       </td>
                       <td>
