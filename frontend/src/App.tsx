@@ -61,7 +61,9 @@ function AppContent() {
   const [authError, setAuthError] = useState('')
   const user = session?.user ?? null
   const isMunicipalApproved = hasMunicipalApproval(user)
-  const accountLabel = user?.user_metadata?.requested_role === 'municipal'
+  const isMunicipalAccount = isMunicipalApproved
+    || user?.user_metadata?.requested_role === 'municipal'
+  const accountLabel = isMunicipalAccount
     ? 'MUNICIPAL ACCOUNT'
     : 'CITIZEN ACCOUNT'
 
