@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
 import { supabase } from './supabaseClient'
 import { demoReports } from './demoReports'
+import './TelluxMap.css'
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
 //OSM_ASSET_ID = 96188
@@ -206,12 +207,17 @@ function getReportPointSize(cameraHeight: number) {
 
 type TelluxMapProps = {
   readOnlyDemo?: boolean
+  publicReports?: boolean
 }
 
-export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) => {
+export const TelluxMap: React.FC<TelluxMapProps> = ({
+  readOnlyDemo = false,
+  publicReports = false,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
   const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
+  const [mapReports, setMapReports] = useState<any[]>([])
   const [reportLayerFilters, setReportLayerFilters] = useState<ReportLayerFilters>({
     pending: true,
     'in-progress': true,
@@ -219,6 +225,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
     urgent: true
   })
   const reportLayerFiltersRef = useRef(reportLayerFilters)
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
+  const [layerPanelWidth, setLayerPanelWidth] = useState(280)
 
   useEffect(() => {
     reportLayerFiltersRef.current = reportLayerFilters
@@ -231,6 +239,21 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
     const nextFilters = { ...reportLayerFiltersRef.current, [layer]: checked }
     reportLayerFiltersRef.current = nextFilters
     setReportLayerFilters(nextFilters)
+  }
+
+  const resizeLayerPanel = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const maxWidth = Math.min(480, window.innerWidth * 0.7)
+    setLayerPanelWidth(Math.min(maxWidth, Math.max(220, event.clientX)))
+  }
+
+  const handleLayerResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    const direction = event.key === 'ArrowRight' ? 1 : -1
+    const maxWidth = Math.min(480, window.innerWidth * 0.7)
+    setLayerPanelWidth(width => Math.min(maxWidth, Math.max(220, width + direction * 16)))
   }
 
   const [hoverInfo, setHoverInfo] = useState({
@@ -252,11 +275,18 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
     name?: string
     phone?: string
     email?: string
+    address?: string
+    eventTime?: string
+    department?: string
+    isPublic?: boolean
   } | null>(null)
 
   useEffect(() => {
     let viewer: any = null
     let isCancelled = false
+    setMapReports([])
+    setPopupReport(null)
+    setPopupFeature(null)
 
     async function initViewer() {
       if (!containerRef.current) return
@@ -423,8 +453,21 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
         // 繪製紅點
         const reportEntities: any[] = []
         const categorizedReportEntities: Array<{ entity: any; layer: ReportLayer }> = []
-        let reports = readOnlyDemo ? demoReports : null
-        if (!readOnlyDemo) {
+        let reports = readOnlyDemo && !publicReports ? demoReports : null
+        if (publicReports) {
+          if (!supabase) {
+            console.error('Supabase is not configured; public report markers cannot be loaded.')
+          } else {
+            const { data, error } = await supabase
+              .from('public_report_map')
+              .select('id, category, status, lat, lon, address, event_time, report_time, responsible_department, emergency_notification_needed')
+            if (error) {
+              console.error('Unable to load public report map data:', error)
+            } else {
+              reports = data
+            }
+          }
+        } else if (!readOnlyDemo) {
           if (!supabase) {
             console.error('Supabase is not configured; real report markers cannot be loaded.')
           } else {
@@ -436,6 +479,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             }
           }
         }
+
+        setMapReports(reports ?? [])
 
         if (reports) {
           reports.forEach((report: any) => {
@@ -451,12 +496,16 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
               } as any,
               properties: {
                 isReport: true,
-                text: report.text,
-                time: report.time,
+                text: publicReports ? '' : report.text,
+                time: report.report_time || report.time,
                 category: report.category,
-                name: report.name,
-                phone: report.phone,
-                email: report.email,
+                name: publicReports ? undefined : report.name,
+                phone: publicReports ? undefined : report.phone,
+                email: publicReports ? undefined : report.email,
+                address: report.address,
+                eventTime: report.event_time,
+                department: report.responsible_department || report.department,
+                isPublic: publicReports,
                 emergencyNotificationNeeded: report.emergency_notification_needed
                   || report.is_urgent_police
               }
@@ -609,11 +658,15 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             if (targetReport) {
               setPopupReport({ 
                 text: targetReport.text || "無詳細內容", 
-                time: targetReport.time || "未知時間",
+                time: targetReport.report_time || targetReport.time || "未知時間",
                 category: targetReport.category,
                 name: targetReport.name,
                 phone: targetReport.phone,
                 email: targetReport.email,
+                address: targetReport.address,
+                eventTime: targetReport.event_time,
+                department: targetReport.responsible_department || targetReport.department,
+                isPublic: publicReports,
                 emergencyNotificationNeeded: targetReport.emergency_notification_needed
                   || targetReport.is_urgent_police,
                 status: targetReport.status
@@ -679,7 +732,33 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
       }
       reportEntitiesRef.current = []
     }
-  }, [])
+  }, [publicReports, readOnlyDemo])
+
+  const reportStatusCounts = mapReports.reduce<Record<ReportLayer, number>>(
+    (counts, report) => {
+      const status = normalizeReportStatus(report.status)
+      if (status === 'resolved') counts.resolved += 1
+      else if (status === 'in-progress') counts['in-progress'] += 1
+      else counts.pending += 1
+      if (
+        report.emergency_notification_needed === true
+        || report.emergency_notification_needed === 'true'
+        || report.is_urgent_police === true
+        || report.is_urgent_police === 'true'
+      ) counts.urgent += 1
+      return counts
+    },
+    { pending: 0, 'in-progress': 0, resolved: 0, urgent: 0 },
+  )
+  const reportCategories = mapReports.reduce<Record<string, number>>((counts, report) => {
+    const category = String(report.category || 'Uncategorized')
+    counts[category] = (counts[category] ?? 0) + 1
+    return counts
+  }, {})
+  const topReportCategories = Object.entries(reportCategories)
+    .sort(([, countA], [, countB]) => countB - countA)
+    .slice(0, 4)
+  const maxCategoryCount = Math.max(1, ...topReportCategories.map(([, count]) => count))
 
   return (
     <div
@@ -797,7 +876,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
       )}
 
       {/* 民眾通報面板 */}
-      {popupReport && (
+      {popupReport && (!publicReports || popupReport.isPublic) && (
         <div
           style={{
             position: "absolute",
@@ -814,7 +893,12 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             padding: "16px",
             borderRadius: "8px",
             border: "1px solid rgba(0,0,0,0.2)",
-            minWidth: "250px",
+            width: "min(360px, calc(100vw - 40px))",
+            maxWidth: "calc(100vw - 40px)",
+            maxHeight: "calc(100% - 40px)",
+            boxSizing: "border-box",
+            overflowY: "auto",
+            overflowWrap: "anywhere",
             zIndex: 1000,
             boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
           }}
@@ -856,15 +940,37 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
             )}
 
             {/* 聯絡人資訊 */}
-            <p style={{ margin: 0 }}>
-              <strong>Name:</strong> {popupReport.name || "Anonymous"}
-            </p>
-            <p style={{ margin: 0 }}>
-              <strong>Phone:</strong> {popupReport.phone || "N/A"}
-            </p>
-            <p style={{ margin: 0 }}>
-              <strong>Email:</strong> {popupReport.email || "N/A"}
-            </p>
+            {!popupReport.isPublic && (
+              <>
+                <p style={{ margin: 0 }}>
+                  <strong>Name:</strong> {popupReport.name || "Anonymous"}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Phone:</strong> {popupReport.phone || "N/A"}
+                </p>
+                <p style={{ margin: 0 }}>
+                  <strong>Email:</strong> {popupReport.email || "N/A"}
+                </p>
+              </>
+            )}
+
+            {popupReport.address && (
+              <p style={{ margin: 0 }}>
+                <strong>Location:</strong> {popupReport.address}
+              </p>
+            )}
+
+            {popupReport.eventTime && (
+              <p style={{ margin: 0 }}>
+                <strong>Event time:</strong> {popupReport.eventTime}
+              </p>
+            )}
+
+            {popupReport.department && (
+              <p style={{ margin: 0 }}>
+                <strong>Responsible department:</strong> {popupReport.department}
+              </p>
+            )}
 
             <p style={{ margin: "4px 0" }}>
               <strong>Report Time:</strong>{" "}
@@ -875,16 +981,22 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
               <strong>Content:</strong>
             </p>
 
-            <p
-              style={{
-                margin: "4px 0",
-                padding: "8px",
-                background: "rgba(0,0,0,0.2)",
-                borderRadius: "4px"
-              }}
-            >
-              {popupReport.text}
-            </p>
+            {popupReport.isPublic ? (
+              <p style={{ margin: "4px 0", fontStyle: "italic" }}>
+                Personal contact information and detailed descriptions are hidden in public view.
+              </p>
+            ) : (
+              <p
+                style={{
+                  margin: "4px 0",
+                  padding: "8px",
+                  background: "rgba(0,0,0,0.2)",
+                  borderRadius: "4px"
+                }}
+              >
+                {popupReport.text}
+              </p>
+            )}
           </div>
 
           <button
@@ -906,61 +1018,144 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({ readOnlyDemo = false }) =>
         </div>
       )}
 
-      {/* 通報圖層篩選 */}
-      <div
-        style={{
-          position: "absolute",
-          right: 20,
-          bottom: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          padding: "12px 14px",
-          borderRadius: "8px",
-          background: "rgba(17, 24, 39, 0.86)",
-          color: "white",
-          fontSize: "13px",
-          zIndex: 1000,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
-        }}
+      <aside
+        className={`report-layer-drawer${isLayerPanelOpen ? ' is-open' : ''}`}
+        style={{ width: isLayerPanelOpen ? layerPanelWidth : 48 }}
+        aria-label="Report layer controls"
       >
-        <strong style={{ marginBottom: "2px" }}>Report Layers</strong>
-        {([
-          { layer: 'pending', label: 'Pending', color: '#22c55e' },
-          { layer: 'in-progress', label: 'In Progress', color: '#facc15' },
-          { layer: 'resolved', label: 'Resolved', color: '#ffffff' },
-          { layer: 'urgent', label: 'Emergency Notification Needed', color: '#dc2626' }
-        ] as const).map(({ layer, label, color }) => (
-          <label
-            key={layer}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              whiteSpace: "nowrap"
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={reportLayerFilters[layer]}
-              onChange={event => toggleReportLayer(layer, event.target.checked)}
-              style={{ accentColor: color, margin: 0 }}
-            />
-            <span
-              aria-hidden="true"
-              style={{
-                width: "9px",
-                height: "9px",
-                borderRadius: "50%",
-                background: color,
-                border: layer === 'resolved' ? "1px solid #9ca3af" : "none"
+        {isLayerPanelOpen ? (
+          <>
+            <div className="report-layer-header">
+              <div>
+                <span className="report-layer-eyebrow">MAP CONTROLS</span>
+                <strong>Report layers</strong>
+              </div>
+              <button
+                className="report-layer-collapse"
+                type="button"
+                onClick={() => setIsLayerPanelOpen(false)}
+                aria-label="Collapse report layers"
+                title="Collapse"
+              >
+                ‹
+              </button>
+            </div>
+            <div className="report-layer-options">
+              {([
+                { layer: 'pending', label: 'Pending', color: '#22c55e' },
+                { layer: 'in-progress', label: 'In Progress', color: '#facc15' },
+                { layer: 'resolved', label: 'Resolved', color: '#ffffff' },
+                { layer: 'urgent', label: 'Emergency Notification Needed', color: '#dc2626' }
+              ] as const).map(({ layer, label, color }) => (
+                <label className="report-layer-option" key={layer}>
+                  <input
+                    type="checkbox"
+                    checked={reportLayerFilters[layer]}
+                    onChange={event => toggleReportLayer(layer, event.target.checked)}
+                    style={{ accentColor: color }}
+                  />
+                  <span
+                    className={`report-layer-swatch${layer === 'resolved' ? ' is-resolved' : ''}`}
+                    style={{ backgroundColor: color }}
+                    aria-hidden="true"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <section className="report-statistics" aria-label="Report statistics">
+              <div className="report-statistics-heading">
+                <span className="report-layer-eyebrow">CITY SNAPSHOT</span>
+                <span>{mapReports.length} reports</span>
+              </div>
+              <div className="report-stat-cards">
+                <div className="report-stat-card">
+                  <strong>{reportStatusCounts.pending + reportStatusCounts['in-progress']}</strong>
+                  <span>Open</span>
+                </div>
+                <div className="report-stat-card is-alert">
+                  <strong>{reportStatusCounts.urgent}</strong>
+                  <span>Urgent</span>
+                </div>
+              </div>
+              <div className="report-stat-statuses" aria-label="Reports by status">
+                {([
+                  { layer: 'pending', label: 'Pending', color: '#22c55e' },
+                  { layer: 'in-progress', label: 'In progress', color: '#facc15' },
+                  { layer: 'resolved', label: 'Resolved', color: '#a8b5c4' },
+                ] as const).map(({ layer, label, color }) => {
+                  const count = reportStatusCounts[layer]
+                  const percentage = mapReports.length
+                    ? `${(count / mapReports.length) * 100}%`
+                    : '0%'
+                  return (
+                    <div className="report-stat-status" key={layer}>
+                      <div className="report-stat-label">
+                        <span><i style={{ backgroundColor: color }} />{label}</span>
+                        <strong>{count}</strong>
+                      </div>
+                      <div className="report-stat-track">
+                        <span style={{ width: percentage, backgroundColor: color }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="report-stat-categories">
+                <span className="report-stat-subheading">TOP CATEGORIES</span>
+                {topReportCategories.length ? topReportCategories.map(([category, count]) => (
+                  <div className="report-stat-category" key={category} title={category}>
+                    <span>{category}</span>
+                    <strong>{count}</strong>
+                    <i>
+                      <b style={{ width: `${(count / maxCategoryCount) * 100}%` }} />
+                    </i>
+                  </div>
+                )) : (
+                  <p className="report-stat-empty">No report data available.</p>
+                )}
+              </div>
+            </section>
+            <div
+              className="report-layer-resize"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize report layer panel"
+              aria-valuemin={220}
+              aria-valuemax={Math.min(480, typeof window === 'undefined' ? 480 : window.innerWidth * 0.7)}
+              aria-valuenow={layerPanelWidth}
+              tabIndex={0}
+              onPointerDown={event => {
+                event.currentTarget.setPointerCapture(event.pointerId)
+                resizeLayerPanel(event)
               }}
+              onPointerMove={event => {
+                if (event.buttons === 1) resizeLayerPanel(event)
+              }}
+              onPointerUp={event => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId)
+                }
+              }}
+              onKeyDown={handleLayerResizeKeyDown}
             />
-            {label}
-          </label>
-        ))}
-      </div>
+          </>
+        ) : (
+          <button
+            className="report-layer-expand"
+            type="button"
+            onClick={() => setIsLayerPanelOpen(true)}
+            aria-label="Expand report layers"
+            title="Report layers"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+              <path d="m3 12 9 5 9-5M3 16l9 5 9-5" />
+            </svg>
+            <span>LAYERS</span>
+          </button>
+        )}
+      </aside>
 
     </div>
   )

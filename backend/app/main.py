@@ -56,6 +56,8 @@ class ChatRequest(BaseModel):
 
     conversation_history: list = []
 
+    language_reference: str | None = None
+
     current_result: dict | None = None
 
 
@@ -135,6 +137,8 @@ def chat(
     result = classify_message(
 
         conversation_history=history,
+
+        language_reference=request.language_reference,
 
         current_result=
         request.current_result

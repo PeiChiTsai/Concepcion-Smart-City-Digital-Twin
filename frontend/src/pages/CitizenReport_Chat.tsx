@@ -139,6 +139,8 @@ export default function CitizenReportChat() {
   const [conversationHistory, setConversationHistory] =
     useState<any[]>([])
 
+  const languageReferenceRef = useRef('')
+
   const [currentResult, setCurrentResult] =
     useState<APIResult | null>(null)
 
@@ -278,6 +280,9 @@ export default function CitizenReportChat() {
 
               conversation_history:
                 conversationHistory,
+
+              language_reference:
+                languageReferenceRef.current || answer,
 
               current_result:
                 currentResult,
@@ -532,6 +537,7 @@ export default function CitizenReportChat() {
     const initialDescription = issueDraft.trim()
     if (!initialDescription || isLoading) return
 
+    languageReferenceRef.current = initialDescription
     setDescription(initialDescription)
     setHasStartedConversation(true)
     void sendMessage(initialDescription)
@@ -685,6 +691,7 @@ export default function CitizenReportChat() {
     // Conversation
 
     setConversationHistory([])
+    languageReferenceRef.current = ''
 
     setCurrentResult(null)
   }

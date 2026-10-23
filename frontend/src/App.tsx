@@ -175,7 +175,12 @@ function AppContent() {
           />
           <Route
             path="/dashboard"
-            element={<GovDashboard readOnlyDemo={authLoading || !isMunicipalApproved} />}
+            element={(
+              <GovDashboard
+                readOnlyDemo={authLoading || !isMunicipalApproved}
+                publicReports={!isMunicipalApproved}
+              />
+            )}
           />
           <Route path="/admin" element={
             <MunicipalRoute authLoading={authLoading} user={user}>

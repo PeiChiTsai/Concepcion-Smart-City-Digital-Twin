@@ -3,9 +3,13 @@ import { TelluxMap } from '../TelluxMap'
 
 type GovDashboardProps = {
   readOnlyDemo?: boolean
+  publicReports?: boolean
 }
 
-export default function GovDashboard({ readOnlyDemo = false }: GovDashboardProps) {
+export default function GovDashboard({
+  readOnlyDemo = false,
+  publicReports = false,
+}: GovDashboardProps) {
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       
@@ -22,7 +26,8 @@ export default function GovDashboard({ readOnlyDemo = false }: GovDashboardProps
         
         {/* 用 span 把文字包起來，方便排版與調整字體 */}
         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
-          Concepcion Smart City Digital Twin Dashboard{readOnlyDemo ? ' · Read-only demo' : ''}
+          Concepcion Smart City Digital Twin Dashboard
+          {publicReports ? ' · Public read-only' : readOnlyDemo ? ' · Read-only demo' : ''}
         </span>
         
         {/* <button 
@@ -52,7 +57,7 @@ export default function GovDashboard({ readOnlyDemo = false }: GovDashboardProps
       
       {/* 地圖區塊：自動填滿剩下的所有空間 */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <TelluxMap readOnlyDemo={readOnlyDemo} />
+        <TelluxMap readOnlyDemo={readOnlyDemo} publicReports={publicReports} />
       </div>
     </div>
   )
