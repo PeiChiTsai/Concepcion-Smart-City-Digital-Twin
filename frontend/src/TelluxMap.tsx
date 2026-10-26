@@ -64,6 +64,7 @@ function parseHistoricalReportCsv(csv: string): HistoricalReportStat[] {
 }
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
+const REPORT_PIN_ICON = `${import.meta.env.BASE_URL}red-marker.png`
 //OSM_ASSET_ID = 96188
 //Concepcion_3D_Tiles = 5950827
 const OSM_ASSET_ID = 6053677
@@ -255,10 +256,10 @@ function getReportStatusLabel(status: unknown) {
   return labels[normalizedStatus] ?? String(status ?? 'Pending')
 }
 
-function getReportPointSize(cameraHeight: number) {
+function getReportPinScale(cameraHeight: number) {
   const referenceHeight = 800
   const size = 22 * Math.sqrt(referenceHeight / Math.max(cameraHeight, 1))
-  return Math.round(Math.min(32, Math.max(8, size)))
+  return Math.min(1, Math.max(0.25, size / 32))
 }
 
 type TelluxMapProps = {
@@ -279,6 +280,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
   const [historicalReportStats, setHistoricalReportStats] =
     useState<Partial<Record<HistoricalReportYear, HistoricalReportStat[]>>>({})
   const [historicalReportStatsError, setHistoricalReportStatsError] = useState('')
+  const [isViewerReady, setIsViewerReady] = useState(false)
   const [reportLayerFilters, setReportLayerFilters] = useState<ReportLayerFilters>({
     pending: true,
     'in-progress': true,
@@ -467,6 +469,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
         viewer.globe.show = true
         viewerRef.current = viewer
+        setIsViewerReady(true)
         /*
         // 【時差調整邏輯】當內建 Widget 改變時間時，將時鐘套用 TIME_OFFSET_HOURS
         if (TIME_OFFSET_HOURS !== 0 && viewer.clock) {
@@ -590,11 +593,15 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               id: `report-${report.id}`,
               show: reportLayerFiltersRef.current[layer],
               position: [report.lon, report.lat, 80],
-              point: {
-                color: getReportColor(report),
-                pixelSize: 22,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY,
-              } as any,
+              symbol: {
+                icon: {
+                  image: REPORT_PIN_ICON,
+                  scale: getReportPinScale(CAMERA_VIEW.height),
+                  color: getReportColor(report),
+                  colorize: true,
+                },
+                anchor: "bottom",
+              },
               properties: {
                 isReport: true,
                 text: publicReports ? '' : report.text,
@@ -617,14 +624,15 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
         }
         reportEntitiesRef.current = categorizedReportEntities
 
-        const updateReportPointSizes = () => {
+        const updateReportPinSizes = () => {
           const cameraHeight = viewer.camera.getCurrentHeight()
           if (cameraHeight === null || !Number.isFinite(cameraHeight)) return
 
-          const pixelSize = getReportPointSize(cameraHeight)
+          const scale = getReportPinScale(cameraHeight)
           reportEntities.forEach(entity => {
-            if (entity.point && entity.point.pixelSize !== pixelSize) {
-              entity.point.pixelSize = pixelSize
+            const icon = entity.symbol?.icon
+            if (icon && icon.scale !== scale) {
+              icon.scale = scale
             }
           })
         }
@@ -635,7 +643,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
           pointSizeUpdateFrame = requestAnimationFrame(() => {
             pointSizeUpdateFrame = null
-            updateReportPointSizes()
+            updateReportPinSizes()
           })
         }
 
@@ -647,8 +655,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
         const handleTouchMove = () => scheduleReportPointSizeUpdate()
 
-        updateReportPointSizes()
-        viewer.controls.addEventListener('change', updateReportPointSizes)
+        updateReportPinSizes()
+        viewer.controls.addEventListener('change', updateReportPinSizes)
         viewer.container.addEventListener('wheel', scheduleReportPointSizeUpdate, { passive: true })
         viewer.container.addEventListener('pointermove', handlePointerMove, { passive: true })
         viewer.container.addEventListener('touchmove', handleTouchMove, { passive: true })
@@ -804,7 +812,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
         ;(viewer as any)._cleanupEvents = () => {
           viewer.off("mousemove", handleMouseMove)
           viewer.off("click", handleClick)
-          viewer.controls.removeEventListener('change', updateReportPointSizes)
+          viewer.controls.removeEventListener('change', updateReportPinSizes)
           viewer.container.removeEventListener('wheel', scheduleReportPointSizeUpdate)
           viewer.container.removeEventListener('pointermove', handlePointerMove)
           viewer.container.removeEventListener('touchmove', handleTouchMove)
@@ -831,9 +839,28 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
         viewerRef.current.destroy()
         viewerRef.current = null
       }
+      setIsViewerReady(false)
       reportEntitiesRef.current = []
     }
   }, [publicReports, readOnlyDemo])
+
+  const recenterMap = () => {
+    const viewer = viewerRef.current
+    if (!viewer) return
+
+    viewer.camera.flyTo({
+      destination: {
+        longitude: CAMERA_VIEW.longitude,
+        latitude: CAMERA_VIEW.latitude,
+        height: CAMERA_VIEW.height,
+      },
+      orientation: {
+        heading: CAMERA_VIEW.heading,
+        pitch: CAMERA_VIEW.pitch,
+        roll: CAMERA_VIEW.roll,
+      },
+    })
+  }
 
   const reportStatusCounts = mapReports.reduce<Record<ReportLayer, number>>(
     (counts, report) => {
@@ -1146,6 +1173,20 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 ‹
               </button>
             </div>
+            <button
+              className="report-map-recenter"
+              type="button"
+              onClick={recenterMap}
+              disabled={!isViewerReady}
+              title="Return to the city center"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v3m0 12v3M3 12h3m12 0h3" />
+                <circle cx="12" cy="12" r="6" />
+                <circle cx="12" cy="12" r="1" />
+              </svg>
+              <span>Recenter map</span>
+            </button>
             <div className="report-layer-options">
               {([
                 { layer: 'pending', label: 'Pending', color: '#22c55e' },

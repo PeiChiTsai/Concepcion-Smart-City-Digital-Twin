@@ -7,6 +7,13 @@ type AdminDashboardProps = {
   readOnlyDemo?: boolean
 }
 
+type ReportStatistics = {
+  pending: number
+  inProgress: number
+  resolved: number
+  urgent: number
+}
+
 export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardProps) {
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -166,6 +173,32 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
     }
   }
 
+  const reportStatistics = reports.reduce<ReportStatistics>((counts, report) => {
+    const status = String(report.status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
+    if (status === 'resolved') counts.resolved += 1
+    else if (status === 'in-progress') counts.inProgress += 1
+    else counts.pending += 1
+
+    if (
+      report.emergency_notification_needed === true
+      || report.emergency_notification_needed === 'true'
+      || report.is_urgent_police === true
+      || report.is_urgent_police === 'true'
+    ) counts.urgent += 1
+
+    return counts
+  }, { pending: 0, inProgress: 0, resolved: 0, urgent: 0 })
+
+  const reportCategoryCounts = reports.reduce<Record<string, number>>((counts, report) => {
+    const category = String(report.category ?? '').trim() || 'Uncategorized'
+    counts[category] = (counts[category] ?? 0) + 1
+    return counts
+  }, {})
+  const topReportCategories = Object.entries(reportCategoryCounts)
+    .sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0]))
+    .slice(0, 6)
+  const maxCategoryCount = Math.max(1, ...topReportCategories.map(([, count]) => count))
+
   return (
     <div className="admin-dashboard">
       <div className="admin-dashboard-inner">
@@ -240,73 +273,140 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
         {loading ? (
           <p>Loading...</p>
         ) : loadError ? null : (
-          <div className="admin-report-table-container">
-            <table className="admin-report-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Time / Category</th>
-                  <th>Reporter</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.length === 0 ? (
+          <>
+            <section className="admin-report-statistics" aria-label="Citizen report statistics">
+              <div className="admin-stat-overview">
+                <article className="admin-stat-card">
+                  <span>Total reports</span>
+                  <strong>{reports.length.toLocaleString()}</strong>
+                </article>
+                <article className="admin-stat-card is-open">
+                  <span>Open reports</span>
+                  <strong>{(reportStatistics.pending + reportStatistics.inProgress).toLocaleString()}</strong>
+                </article>
+                <article className="admin-stat-card is-resolved">
+                  <span>Resolved</span>
+                  <strong>{reportStatistics.resolved.toLocaleString()}</strong>
+                </article>
+                <article className="admin-stat-card is-urgent">
+                  <span>Emergency notifications</span>
+                  <strong>{reportStatistics.urgent.toLocaleString()}</strong>
+                </article>
+              </div>
+
+              <div className="admin-stat-charts">
+                <section className="admin-stat-chart" aria-label="Reports by status">
+                  <div className="admin-stat-chart-heading">
+                    <h2>Reports by status</h2>
+                    <span>{reports.length.toLocaleString()} total</span>
+                  </div>
+                  {([
+                    { key: 'pending', label: 'Pending', count: reportStatistics.pending },
+                    { key: 'in-progress', label: 'In progress', count: reportStatistics.inProgress },
+                    { key: 'resolved', label: 'Resolved', count: reportStatistics.resolved },
+                  ]).map(({ key, label, count }) => (
+                    <div className={`admin-stat-bar-row is-${key}`} key={key}>
+                      <div className="admin-stat-bar-label">
+                        <span>{label}</span>
+                        <strong>{count.toLocaleString()}</strong>
+                      </div>
+                      <div className="admin-stat-bar-track">
+                        <span style={{ width: `${reports.length ? (count / reports.length) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                <section className="admin-stat-chart" aria-label="Top report categories">
+                  <div className="admin-stat-chart-heading">
+                    <h2>Top categories</h2>
+                    <span>Top {topReportCategories.length}</span>
+                  </div>
+                  {topReportCategories.length ? topReportCategories.map(([category, count]) => (
+                    <div className="admin-stat-category-row" key={category} title={category}>
+                      <div className="admin-stat-bar-label">
+                        <span>{category}</span>
+                        <strong>{count.toLocaleString()}</strong>
+                      </div>
+                      <div className="admin-stat-bar-track">
+                        <span style={{ width: `${(count / maxCategoryCount) * 100}%` }} />
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="admin-stat-empty">No report data available.</p>
+                  )}
+                </section>
+              </div>
+            </section>
+
+            <div className="admin-report-table-container">
+              <table className="admin-report-table">
+                <thead>
                   <tr>
-                    <td className="admin-report-empty" colSpan={6}>Currently, there are no citizen reports.</td>
+                    <th>ID</th>
+                    <th>Time / Category</th>
+                    <th>Reporter</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  reports.map((report) => (
-                    <tr key={report.id}>
-                      <td className="admin-report-id">#{report.id}</td>
-                      <td>
-                        <div className="admin-report-time">{report.time}</div>
-                        <div className="admin-report-category">{report.category}</div>
-                        {(report.emergency_notification_needed || report.is_urgent_police) && (
-                          <span className="admin-report-urgent">Emergency notification needed</span>
-                        )}
-                      </td>
-                      <td>
-                        <div>{report.name}</div>
-                        <div className="admin-report-phone">{report.phone}</div>
-                      </td>
-                      <td className="admin-report-description">
-                        {report.text}
-                      </td>
-                      <td>
-                        {readOnlyDemo ? (
-                          <span className="demo-status">{report.status || 'pending'} · demo</span>
-                        ) : (
-                          <select
-                            value={report.status || 'pending'}
-                            onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                          >
-                            <option value="pending">Pending (Processing)</option>
-                            <option value="in-progress">In Progress (In Progress)</option>
-                            <option value="resolved">Resolved (Resolved)</option>
-                          </select>
-                        )}
-                      </td>
-                      <td>
-                        {readOnlyDemo
-                          ? <span className="demo-status">No actions</span>
-                          : (
-                            <button
-                              className="admin-report-delete"
-                              onClick={() => handleDelete(report.id)}
-                            >
-                              Delete
-                            </button>
-                          )}
-                      </td>
+                </thead>
+                <tbody>
+                  {reports.length === 0 ? (
+                    <tr>
+                      <td className="admin-report-empty" colSpan={6}>Currently, there are no citizen reports.</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    reports.map((report) => (
+                      <tr key={report.id}>
+                        <td className="admin-report-id">#{report.id}</td>
+                        <td>
+                          <div className="admin-report-time">{report.time}</div>
+                          <div className="admin-report-category">{report.category}</div>
+                          {(report.emergency_notification_needed || report.is_urgent_police) && (
+                            <span className="admin-report-urgent">Emergency notification needed</span>
+                          )}
+                        </td>
+                        <td>
+                          <div>{report.name}</div>
+                          <div className="admin-report-phone">{report.phone}</div>
+                        </td>
+                        <td className="admin-report-description">
+                          {report.text}
+                        </td>
+                        <td>
+                          {readOnlyDemo ? (
+                            <span className="demo-status">{report.status || 'pending'} · demo</span>
+                          ) : (
+                            <select
+                              value={report.status || 'pending'}
+                              onChange={(e) => handleStatusChange(report.id, e.target.value)}
+                            >
+                              <option value="pending">Pending (Processing)</option>
+                              <option value="in-progress">In Progress (In Progress)</option>
+                              <option value="resolved">Resolved (Resolved)</option>
+                            </select>
+                          )}
+                        </td>
+                        <td>
+                          {readOnlyDemo
+                            ? <span className="demo-status">No actions</span>
+                            : (
+                              <button
+                                className="admin-report-delete"
+                                onClick={() => handleDelete(report.id)}
+                              >
+                                Delete
+                              </button>
+                            )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
