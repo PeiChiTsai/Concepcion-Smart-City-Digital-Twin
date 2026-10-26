@@ -5,7 +5,11 @@
   bottom: 16px;
   left: 16px;
   box-sizing: border-box;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(125, 211, 252, .42) transparent;
+  scrollbar-width: thin;
   border: 1px solid rgba(125, 211, 252, .2);
   border-radius: 12px;
   background: rgba(8, 19, 33, .9);
@@ -313,6 +317,100 @@
   margin: 0;
   color: #8498aa;
   font-size: 10px;
+}
+
+.historical-report-statistics {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(148, 163, 184, .17);
+}
+
+.historical-report-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.historical-report-heading select {
+  min-width: 72px;
+  padding: 5px 22px 5px 8px;
+  border: 1px solid rgba(125, 211, 252, .2);
+  border-radius: 6px;
+  background: #102235;
+  color: #e7f0f8;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.historical-report-count {
+  margin-top: -6px;
+  color: #8498aa;
+  font-size: 9px;
+}
+
+.historical-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historical-report-item {
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 7px;
+  color: #afbdca;
+  font-size: 10px;
+}
+
+.historical-report-rank {
+  color: #6f879b;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.historical-report-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historical-report-item > strong {
+  color: #e3edf5;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.historical-report-item > i {
+  grid-column: 2 / -1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(148, 163, 184, .15);
+}
+
+.historical-report-item > i > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #818cf8);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .report-layer-expand {

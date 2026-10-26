@@ -6,6 +6,62 @@ import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } fro
 import { supabase } from './supabaseClient'
 import { demoReports } from './demoReports'
 import './TelluxMap.css'
+import reportedCases2023Url from '../../backend/data/2023-reported-cases.csv?url'
+import reportedCases2024Url from '../../backend/data/2024-reported-cases.csv?url'
+import reportedCases2025Url from '../../backend/data/2025-reported-cases.csv?url'
+import reportedCases2026Url from '../../backend/data/2026-reported-cases.csv?url'
+
+const historicalReportFiles = {
+  '2023': reportedCases2023Url,
+  '2024': reportedCases2024Url,
+  '2025': reportedCases2025Url,
+  '2026': reportedCases2026Url,
+} as const
+
+type HistoricalReportYear = keyof typeof historicalReportFiles
+type HistoricalReportStat = { category: string; count: number }
+
+function parseHistoricalReportCsv(csv: string): HistoricalReportStat[] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let insideQuotes = false
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const character = csv[index]
+    if (character === '"' && insideQuotes && csv[index + 1] === '"') {
+      field += '"'
+      index += 1
+    } else if (character === '"') {
+      insideQuotes = !insideQuotes
+    } else if (character === ',' && !insideQuotes) {
+      row.push(field)
+      field = ''
+    } else if ((character === '\n' || character === '\r') && !insideQuotes) {
+      if (character === '\r' && csv[index + 1] === '\n') index += 1
+      row.push(field)
+      if (row.some(value => value.trim())) rows.push(row)
+      row = []
+      field = ''
+    } else {
+      field += character
+    }
+  }
+
+  if (field || row.length) {
+    row.push(field)
+    if (row.some(value => value.trim())) rows.push(row)
+  }
+
+  return rows.slice(1)
+    .map(([category, rawCount]) => ({
+      category: category.trim(),
+      count: Number(rawCount?.trim()),
+    }))
+    .filter(report => report.category && Number.isFinite(report.count))
+    .sort((first, second) => second.count - first.count)
+    .slice(0, 15)
+}
 
 const ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN || "Please enter your Token"
 //OSM_ASSET_ID = 96188
@@ -218,6 +274,11 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
   const viewerRef = useRef<any>(null)
   const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
   const [mapReports, setMapReports] = useState<any[]>([])
+  const [historicalReportYear, setHistoricalReportYear] =
+    useState<HistoricalReportYear>('2026')
+  const [historicalReportStats, setHistoricalReportStats] =
+    useState<Partial<Record<HistoricalReportYear, HistoricalReportStat[]>>>({})
+  const [historicalReportStatsError, setHistoricalReportStatsError] = useState('')
   const [reportLayerFilters, setReportLayerFilters] = useState<ReportLayerFilters>({
     pending: true,
     'in-progress': true,
@@ -227,6 +288,46 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
   const reportLayerFiltersRef = useRef(reportLayerFilters)
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
   const [layerPanelWidth, setLayerPanelWidth] = useState(280)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadHistoricalReportStats = async () => {
+      try {
+        const entries = await Promise.all(
+          Object.entries(historicalReportFiles).map(async ([year, url]) => {
+            const response = await fetch(url)
+            if (!response.ok) {
+              throw new Error(`Unable to load ${year} report statistics (${response.status}).`)
+            }
+
+            const bytes = await response.arrayBuffer()
+            const csv = new TextDecoder('utf-8').decode(bytes)
+            return [year as HistoricalReportYear, parseHistoricalReportCsv(csv)] as const
+          }),
+        )
+
+        if (isMounted) {
+          setHistoricalReportStats(Object.fromEntries(entries))
+          setHistoricalReportStatsError('')
+        }
+      } catch (error) {
+        console.error('Failed to load historical report statistics:', error)
+        if (isMounted) {
+          setHistoricalReportStatsError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load historical report statistics.',
+          )
+        }
+      }
+    }
+
+    void loadHistoricalReportStats()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     reportLayerFiltersRef.current = reportLayerFilters
@@ -759,6 +860,11 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
     .sort(([, countA], [, countB]) => countB - countA)
     .slice(0, 4)
   const maxCategoryCount = Math.max(1, ...topReportCategories.map(([, count]) => count))
+  const selectedHistoricalReportStats = historicalReportStats[historicalReportYear] ?? []
+  const maxHistoricalReportCount = Math.max(
+    1,
+    ...selectedHistoricalReportStats.map(({ count }) => count),
+  )
 
   return (
     <div
@@ -1113,6 +1219,44 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                   </div>
                 )) : (
                   <p className="report-stat-empty">No report data available.</p>
+                )}
+              </div>
+              <div className="historical-report-statistics">
+                <div className="historical-report-heading">
+                  <span className="report-stat-subheading">HISTORICAL TOP 14</span>
+                  <label>
+                    <span className="sr-only">Select report year</span>
+                    <select
+                      value={historicalReportYear}
+                      onChange={event => setHistoricalReportYear(event.target.value as HistoricalReportYear)}
+                      aria-label="Select report year"
+                    >
+                      {Object.keys(historicalReportFiles)
+                        .sort((first, second) => Number(second) - Number(first))
+                        .map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                
+                {historicalReportStatsError ? (
+                  <p className="report-stat-empty" role="alert">{historicalReportStatsError}</p>
+                ) : selectedHistoricalReportStats.length ? (
+                  <ol className="historical-report-list">
+                    {selectedHistoricalReportStats.map(({ category, count }, index) => (
+                      <li className="historical-report-item" key={`${category}-${index}`}>
+                        <span className="historical-report-rank">{index + 1}</span>
+                        <span className="historical-report-name" title={category}>{category}</span>
+                        <strong>{count.toLocaleString()}</strong>
+                        <i>
+                          <b style={{ width: `${(count / maxHistoricalReportCount) * 100}%` }} />
+                        </i>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="report-stat-empty">Loading annual report data...</p>
                 )}
               </div>
             </section>

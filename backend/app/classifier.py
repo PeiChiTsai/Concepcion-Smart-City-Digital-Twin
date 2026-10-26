@@ -123,6 +123,45 @@ def get_department(category):
     ]
 
 
+def get_missing_information_prompt(
+    first_citizen_message,
+    missing_field,
+    location_unavailable=False,
+):
+    text = first_citizen_message.lower()
+
+    if any("\u4e00" <= character <= "\u9fff" for character in text):
+        if missing_field == "address":
+            question = (
+                "我目前無法在地圖上定位這個地點。"
+                "請提供更明確的街道地址或附近地標。"
+                if location_unavailable
+                else "請提供事件發生的街道地址或附近地標。"
+            )
+            missing = "需要可在地圖上定位的街道地址或附近地標。"
+        else:
+            question = "請問這件事是何時發生，或你是何時發現的？"
+            missing = "需要事件發生或首次發現的日期和時間。"
+        return missing, question
+
+    if missing_field == "address":
+        question = (
+            "I couldn't locate this place on the map. "
+            "Could you provide a more specific street address or a nearby landmark?"
+            if location_unavailable
+            else "Could you provide the street address or a nearby landmark?"
+        )
+        return (
+            "A mappable street address or nearby landmark is needed.",
+            question,
+        )
+
+    return (
+        "The event date and time, or when it was first noticed, is needed.",
+        "When did this happen, or when did you first notice it?",
+    )
+
+
 # ==========================================
 # 7. Main AI classification function
 # ==========================================
@@ -521,12 +560,29 @@ If all required information has been provided:
         )
 
     if not result.get("address"):
-        result["missing_information"] = "A specific address or nearby landmark is needed."
+        (
+            result["missing_information"],
+            result["follow_up_question"],
+        ) = get_missing_information_prompt(
+            first_citizen_message,
+            "address",
+        )
     elif result["latitude"] is None or result["longitude"] is None:
-        result["missing_information"] = "The address could not be located on the map."
+        (
+            result["missing_information"],
+            result["follow_up_question"],
+        ) = get_missing_information_prompt(
+            first_citizen_message,
+            "address",
+            location_unavailable=True,
+        )
     elif not result.get("event_time"):
-        result["missing_information"] = (
-            "The event time or when it was first noticed is needed."
+        (
+            result["missing_information"],
+            result["follow_up_question"],
+        ) = get_missing_information_prompt(
+            first_citizen_message,
+            "event_time",
         )
 
     result["location_description"] = result.get("address", "")
