@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import './AboutPage.css'
+import { useI18n } from '../i18n'
 
 const features = [
   {
@@ -50,35 +51,35 @@ const steps = [
 ]
 
 export default function AboutPage() {
+  const { t } = useI18n()
+
   return (
     <main className="about-page">
       <div className="about-shell">
         <header className="about-hero">
-          <p className="about-eyebrow"><span /> PROJECT GUIDE · CONCEPCIÓN</p>
-          <h1>A practical demo for a more connected city.</h1>
+          <p className="about-eyebrow"><span /> {t('PROJECT GUIDE · CONCEPCIÓN')}</p>
+          <h1>{t('A practical demo for a more connected city.')}</h1>
           <p className="about-intro">
-            Concepción Smart City demonstrates how citizen reports, AI-assisted
-            intake, and a 3D city view can work together in one civic-service
-            workflow.
+            {t('Concepción Smart City demonstrates how citizen reports, AI-assisted intake, and a 3D city view can work together in one civic-service workflow.')}
           </p>
           <div className="about-hero-actions">
-            <Link className="about-primary-link" to="/report-chat">Try the AI assistant <span>↗</span></Link>
-            <Link className="about-secondary-link" to="/">Back to home</Link>
+            <Link className="about-primary-link" to="/report-chat">{t('Try the AI assistant')} <span>↗</span></Link>
+            <Link className="about-secondary-link" to="/">{t('Back to home')}</Link>
           </div>
         </header>
 
         <section className="about-section" aria-labelledby="about-features-title">
           <div className="about-section-heading">
-            <p className="about-eyebrow">EXPLORE THE DEMO</p>
-            <h2 id="about-features-title">What each page does</h2>
+            <p className="about-eyebrow">{t('EXPLORE THE DEMO')}</p>
+            <h2 id="about-features-title">{t('What each page does')}</h2>
           </div>
           <div className="about-feature-grid">
             {features.map((feature) => (
               <article className="about-feature-card" key={feature.number}>
                 <span className="about-card-number">{feature.number}</span>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
-                <Link to={feature.link}>{feature.action} <span>→</span></Link>
+                <h3>{t(feature.title)}</h3>
+                <p>{t(feature.description)}</p>
+                <Link to={feature.link}>{t(feature.action)} <span>→</span></Link>
               </article>
             ))}
           </div>
@@ -86,16 +87,16 @@ export default function AboutPage() {
 
         <section className="about-workflow" aria-labelledby="about-workflow-title">
           <div className="about-section-heading">
-            <p className="about-eyebrow">HOW TO USE IT</p>
-            <h2 id="about-workflow-title">From a local issue to a city report</h2>
+            <p className="about-eyebrow">{t('HOW TO USE IT')}</p>
+            <h2 id="about-workflow-title">{t('From a local issue to a city report')}</h2>
           </div>
           <ol className="about-steps">
             {steps.map((step) => (
               <li key={step.number}>
                 <span className="about-step-number">{step.number}</span>
                 <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.description}</p>
+                  <h3>{t(step.title)}</h3>
+                  <p>{t(step.description)}</p>
                 </div>
               </li>
             ))}
@@ -104,25 +105,19 @@ export default function AboutPage() {
 
         <section className="about-access" aria-labelledby="about-access-title">
           <div>
-            <p className="about-eyebrow">ACCOUNT ACCESS</p>
-            <h2 id="about-access-title">Different roles, clear permissions.</h2>
+            <p className="about-eyebrow">{t('ACCOUNT ACCESS')}</p>
+            <h2 id="about-access-title">{t('Different roles, clear permissions.')}</h2>
             <p>
-              Citizen accounts can prepare and submit reports. Municipal
-              accounts can explore sample operations data; full access to real
-              reports requires administrator approval.
+              {t('Citizen accounts can prepare and submit reports. Municipal accounts can explore sample operations data; full access to real reports requires administrator approval.')}
             </p>
           </div>
-          <Link to="/municipal-access">Municipal access <span>↗</span></Link>
+          <Link to="/municipal-access">{t('Municipal access')} <span>↗</span></Link>
         </section>
 
         <aside className="about-notice">
           <span aria-hidden="true">i</span>
           <p>
-            This is a demonstration platform, not an emergency-response
-            service. Reports are saved only after you choose to submit them.
-            The AI’s emergency assessment is informational and does not notify
-            police or other agencies. For an emergency, contact local
-            emergency services directly.
+            {t('This is a demonstration platform, not an emergency-response service. Reports are saved only after you choose to submit them. The AI’s emergency assessment is informational and does not notify police or other agencies. For an emergency, contact local emergency services directly.')}
           </p>
         </aside>
       </div>

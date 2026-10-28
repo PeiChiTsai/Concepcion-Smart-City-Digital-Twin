@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, supabaseConfigured } from '../supabaseClient'
 import './MunicipalAccess.css'
+import { useI18n } from '../i18n'
 
 export type AccessRole = 'citizen' | 'municipal'
 
@@ -10,6 +11,7 @@ type MunicipalAccessProps = {
 }
 
 export default function MunicipalAccess({ role }: MunicipalAccessProps) {
+  const { t } = useI18n()
   const [isCreatingAccount, setIsCreatingAccount] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -30,7 +32,7 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
     setErrorMessage('')
 
     if (!supabase) {
-      setErrorMessage('Supabase is not configured. Add the project URL and anon key to frontend/.env, then restart Vite.')
+      setErrorMessage(t('Supabase is not configured. Add the project URL and anon key to frontend/.env, then restart Vite.'))
       return
     }
 
@@ -58,7 +60,7 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
         } else if (data.session) {
           navigate(returnTo, { replace: true })
         } else {
-          setMessage('Account created. Check your email to confirm it, then sign in. For instant access, disable email confirmation in your Supabase Auth settings.')
+          setMessage(t('Account created. Check your email to confirm it, then sign in. For instant access, disable email confirmation in your Supabase Auth settings.'))
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -69,7 +71,7 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
         }
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Authentication failed. Please try again.')
+      setErrorMessage(error instanceof Error ? error.message : t('Authentication failed. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -79,33 +81,33 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
     <section className="municipal-access">
       <div className="access-grid" aria-hidden="true" />
       <div className="access-card">
-        <Link className="access-home-link" to="/">← Back to city portal</Link>
-        <div className="access-eyebrow"><span /> {isMunicipal ? 'MUNICIPAL PORTAL' : 'CITIZEN PORTAL'}</div>
+        <Link className="access-home-link" to="/">{t('← Back to city portal')}</Link>
+        <div className="access-eyebrow"><span /> {isMunicipal ? t('MUNICIPAL PORTAL') : t('CITIZEN PORTAL')}</div>
         <h1>
           {isCreatingAccount
-            ? 'Create your account.'
-            : isMunicipal ? 'Welcome back.' : 'Welcome, neighbor.'}
+            ? t('Create your account.')
+            : isMunicipal ? t('Welcome back.') : t('Welcome, neighbor.')}
         </h1>
         <p className="access-intro">
           {isCreatingAccount
             ? isMunicipal
-              ? 'Create an account to enter the read-only city operations demo.'
-              : 'Create a free account to report and follow local issues.'
+              ? t('Create an account to enter the read-only city operations demo.')
+              : t('Create a free account to report and follow local issues.')
             : isMunicipal
-              ? 'Sign in to explore city operations. Unapproved accounts open in read-only demo mode.'
-              : 'Sign in to continue to citizen services.'}
+              ? t('Sign in to explore city operations. Unapproved accounts open in read-only demo mode.')
+              : t('Sign in to continue to citizen services.')}
         </p>
 
         {!supabaseConfigured && (
           <div className="access-error" role="alert">
-            Supabase is not configured. Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>frontend/.env</code>, then restart Vite.
+            {t('Supabase is not configured. Add')} <code>VITE_SUPABASE_URL</code> {t('and')} <code>VITE_SUPABASE_ANON_KEY</code> {t('to')} <code>frontend/.env</code>{t(', then restart Vite.')}
           </div>
         )}
 
         {isMunicipal && (
           <div className="demo-notice" role="note">
             <span aria-hidden="true">ⓘ</span>
-            <p><strong>Read-only by default.</strong> Real municipal access requires administrator approval.</p>
+            <p><strong>{t('Read-only by default.')}</strong> {t('Real municipal access requires administrator approval.')}</p>
           </div>
         )}
 
@@ -115,37 +117,37 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
         <form className="access-form" onSubmit={handleSubmit}>
           {isCreatingAccount && (
             <label>
-              <span>FULL NAME</span>
-              <input autoComplete="name" name="name" placeholder="Your name" required />
+              <span>{t('FULL NAME')}</span>
+              <input autoComplete="name" name="name" placeholder={t('Your name')} required />
             </label>
           )}
           <label>
-            <span>EMAIL</span>
+            <span>{t('EMAIL')}</span>
             <input autoComplete="email" name="email" placeholder={isMunicipal ? 'name@city.gov' : 'you@example.com'} required type="email" />
           </label>
           <label>
-            <span>PASSWORD</span>
+            <span>{t('PASSWORD')}</span>
             <input
               autoComplete={isCreatingAccount ? 'new-password' : 'current-password'}
               minLength={isCreatingAccount ? 8 : undefined}
               name="password"
-              placeholder={isCreatingAccount ? 'At least 8 characters' : 'Your password'}
+              placeholder={isCreatingAccount ? t('At least 8 characters') : t('Your password')}
               required
               type="password"
             />
           </label>
           <button className="access-submit" disabled={isSubmitting || !supabaseConfigured} type="submit">
             {isSubmitting
-              ? 'Please wait...'
+              ? t('Please wait...')
               : isCreatingAccount
-                ? 'Create free account'
-                : 'Sign in'}
+                ? t('Create free account')
+                : t('Sign in')}
             <span aria-hidden="true">↗</span>
           </button>
         </form>
 
         <div className="access-switch">
-          {isCreatingAccount ? 'Already have an account?' : 'New to the city portal?'}
+          {isCreatingAccount ? t('Already have an account?') : t('New to the city portal?')}
           <button
             onClick={() => {
               setIsCreatingAccount((current) => !current)
@@ -154,12 +156,12 @@ export default function MunicipalAccess({ role }: MunicipalAccessProps) {
             }}
             type="button"
           >
-            {isCreatingAccount ? 'Sign in' : 'Create an account'}
+            {isCreatingAccount ? t('Sign in') : t('Create an account')}
           </button>
         </div>
         <div className="access-footer">
           <span>CONCEPCIÓN · BIOBÍO</span>
-          <span>{isMunicipal ? 'READ-ONLY UNTIL APPROVED' : 'CITIZEN SERVICES'} <i /></span>
+          <span>{isMunicipal ? t('READ-ONLY UNTIL APPROVED') : t('CITIZEN SERVICES')} <i /></span>
         </div>
       </div>
     </section>

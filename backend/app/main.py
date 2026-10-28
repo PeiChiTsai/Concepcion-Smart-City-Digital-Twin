@@ -58,6 +58,7 @@ class ChatRequest(BaseModel):
 
     language_reference: str | None = None
 
+    ui_language: str | None = None
     current_result: dict | None = None
 
 
@@ -140,6 +141,7 @@ def chat(
 
         language_reference=request.language_reference,
 
+        ui_language=request.ui_language,
         current_result=
         request.current_result
     )

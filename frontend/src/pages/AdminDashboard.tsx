@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { demoReports } from '../demoReports'
 import './AdminDashboard.css'
+import { useI18n } from '../i18n'
 
 type AdminDashboardProps = {
   readOnlyDemo?: boolean
@@ -14,7 +15,14 @@ type ReportStatistics = {
   urgent: number
 }
 
+const statusLabels: Record<string, string> = {
+  pending: 'Pending',
+  'in-progress': 'In progress',
+  resolved: 'Resolved',
+}
+
 export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardProps) {
+  const { t } = useI18n()
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -148,7 +156,7 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
 
     if (error) {
       console.error('Failed to update report status:', error)
-      alert(`Unable to update report: ${error.message}`)
+      alert(t('Unable to update report: {message}', { message: error.message }))
     } else {
       // 重新整理列表
       fetchReports()
@@ -158,7 +166,7 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
   // 3. 刪除通報
   const handleDelete = async (id: number) => {
     if (readOnlyDemo || !supabase) return
-    if (!window.confirm("Are you sure you want to delete this report?")) return
+    if (!window.confirm(t('Are you sure you want to delete this report?'))) return
 
     const { error } = await supabase
       .from('reports')
@@ -167,7 +175,7 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
 
     if (error) {
       console.error('Failed to delete report:', error)
-      alert(`Unable to delete report: ${error.message}`)
+      alert(t('Unable to delete report: {message}', { message: error.message }))
     } else {
       fetchReports()
     }
@@ -203,107 +211,107 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
     <div className="admin-dashboard">
       <div className="admin-dashboard-inner">
         <header className="admin-dashboard-heading">
-          <p className="admin-dashboard-eyebrow"><span /> CONCEPCIÓN · CITY OPERATIONS</p>
-          <h1>Municipality Admin Dashboard</h1>
-          <p>Review and manage citizen reports across the city.</p>
+          <p className="admin-dashboard-eyebrow"><span /> {t('CONCEPCIÓN · CITY OPERATIONS')}</p>
+          <h1>{t('Municipality Admin Dashboard')}</h1>
+          <p>{t('Review and manage citizen reports across the city.')}</p>
         </header>
 
         {readOnlyDemo && (
           <>
             <div className="municipal-demo-banner" role="status">
-              <strong>READ-ONLY DEMO</strong>
-              <span>Sample records only. Sign in with an approved municipal account to access real reports and actions.</span>
+              <strong>{t('READ-ONLY DEMO')}</strong>
+              <span>{t('Sample records only. Sign in with an approved municipal account to access real reports and actions.')}</span>
             </div>
             <section className="municipal-access-request" aria-labelledby="access-request-title">
               <div>
-                <h2 id="access-request-title">Need official city operations access?</h2>
-                <p>Submit your organization and reason for access. An administrator must review your request; this form does not grant permissions.</p>
+                <h2 id="access-request-title">{t('Need official city operations access?')}</h2>
+                <p>{t('Submit your organization and reason for access. An administrator must review your request; this form does not grant permissions.')}</p>
               </div>
               {requestStatus === 'pending' ? (
                 <div>
-                  <p className="access-request-pending" role="status">Request submitted · Awaiting administrator review</p>
-                  {requestEmail && <p className="access-request-email">Application email: {requestEmail}</p>}
-                  {requestMessage && <p className="access-request-success">{requestMessage}</p>}
+                  <p className="access-request-pending" role="status">{t('Request submitted · Awaiting administrator review')}</p>
+                  {requestEmail && <p className="access-request-email">{t('Application email:')} {requestEmail}</p>}
+                  {requestMessage && <p className="access-request-success">{t(requestMessage)}</p>}
                 </div>
               ) : (
                 <form className="access-request-form" onSubmit={handleAccessRequest}>
                   <label>
-                    <span>ORGANIZATION</span>
+                    <span>{t('ORGANIZATION')}</span>
                     <input
                       autoComplete="organization"
                       maxLength={160}
                       onChange={(event) => setOrganization(event.target.value)}
-                      placeholder="City department or organization"
+                      placeholder={t('City department or organization')}
                       required
                       value={organization}
                     />
                   </label>
                   <label>
-                    <span>WHY DO YOU NEED ACCESS?</span>
+                    <span>{t('WHY DO YOU NEED ACCESS?')}</span>
                     <textarea
                       maxLength={1000}
                       minLength={10}
                       onChange={(event) => setRequestReason(event.target.value)}
-                      placeholder="Briefly describe your municipal role and intended use."
+                      placeholder={t('Briefly describe your municipal role and intended use.')}
                       required
                       rows={3}
                       value={requestReason}
                     />
                   </label>
-                  {requestError && <p className="access-request-error" role="alert">{requestError}</p>}
-                  {requestMessage && <p className="access-request-success" role="status">{requestMessage}</p>}
+                  {requestError && <p className="access-request-error" role="alert">{t(requestError)}</p>}
+                  {requestMessage && <p className="access-request-success" role="status">{t(requestMessage)}</p>}
                   <button
                     className="access-request-submit"
                     disabled={isSubmittingRequest || requestStatus === 'loading'}
                     type="submit"
                   >
-                    {isSubmittingRequest ? 'Submitting...' : 'Request municipal access'}
+                    {isSubmittingRequest ? t('Submitting...') : t('Request municipal access')}
                   </button>
                 </form>
               )}
               {requestStatus === 'error' && !requestError && (
-                <p className="access-request-error" role="alert">Unable to check your request status.</p>
+                <p className="access-request-error" role="alert">{t('Unable to check your request status.')}</p>
               )}
             </section>
           </>
         )}
 
-        {loadError && <p role="alert">{loadError}</p>}
+        {loadError && <p role="alert">{t(loadError)}</p>}
 
         {loading ? (
-          <p>Loading...</p>
+          <p>{t('Loading...')}</p>
         ) : loadError ? null : (
           <>
-            <section className="admin-report-statistics" aria-label="Citizen report statistics">
+            <section className="admin-report-statistics" aria-label={t('Citizen report statistics')}>
               <div className="admin-stat-overview">
                 <article className="admin-stat-card">
-                  <span>Total reports</span>
+                  <span>{t('Total reports')}</span>
                   <strong>{reports.length.toLocaleString()}</strong>
                 </article>
                 <article className="admin-stat-card is-open">
-                  <span>Open reports</span>
+                  <span>{t('Open reports')}</span>
                   <strong>{(reportStatistics.pending + reportStatistics.inProgress).toLocaleString()}</strong>
                 </article>
                 <article className="admin-stat-card is-resolved">
-                  <span>Resolved</span>
+                  <span>{t('Resolved')}</span>
                   <strong>{reportStatistics.resolved.toLocaleString()}</strong>
                 </article>
                 <article className="admin-stat-card is-urgent">
-                  <span>Emergency notifications</span>
+                  <span>{t('Emergency notifications')}</span>
                   <strong>{reportStatistics.urgent.toLocaleString()}</strong>
                 </article>
               </div>
 
               <div className="admin-stat-charts">
-                <section className="admin-stat-chart" aria-label="Reports by status">
+                <section className="admin-stat-chart" aria-label={t('Reports by status')}>
                   <div className="admin-stat-chart-heading">
-                    <h2>Reports by status</h2>
-                    <span>{reports.length.toLocaleString()} total</span>
+                    <h2>{t('Reports by status')}</h2>
+                    <span>{t('{count} total', { count: reports.length.toLocaleString() })}</span>
                   </div>
                   {([
-                    { key: 'pending', label: 'Pending', count: reportStatistics.pending },
-                    { key: 'in-progress', label: 'In progress', count: reportStatistics.inProgress },
-                    { key: 'resolved', label: 'Resolved', count: reportStatistics.resolved },
+                    { key: 'pending', label: t('Pending'), count: reportStatistics.pending },
+                    { key: 'in-progress', label: t('In progress'), count: reportStatistics.inProgress },
+                    { key: 'resolved', label: t('Resolved'), count: reportStatistics.resolved },
                   ]).map(({ key, label, count }) => (
                     <div className={`admin-stat-bar-row is-${key}`} key={key}>
                       <div className="admin-stat-bar-label">
@@ -317,15 +325,15 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
                   ))}
                 </section>
 
-                <section className="admin-stat-chart" aria-label="Top report categories">
+                <section className="admin-stat-chart" aria-label={t('Top report categories')}>
                   <div className="admin-stat-chart-heading">
-                    <h2>Top categories</h2>
-                    <span>Top {topReportCategories.length}</span>
+                    <h2>{t('Top categories')}</h2>
+                    <span>{t('Top {count}', { count: topReportCategories.length })}</span>
                   </div>
                   {topReportCategories.length ? topReportCategories.map(([category, count]) => (
-                    <div className="admin-stat-category-row" key={category} title={category}>
+                    <div className="admin-stat-category-row" key={category} title={t(category)}>
                       <div className="admin-stat-bar-label">
-                        <span>{category}</span>
+                        <span>{t(category)}</span>
                         <strong>{count.toLocaleString()}</strong>
                       </div>
                       <div className="admin-stat-bar-track">
@@ -333,7 +341,7 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
                       </div>
                     </div>
                   )) : (
-                    <p className="admin-stat-empty">No report data available.</p>
+                    <p className="admin-stat-empty">{t('No report data available.')}</p>
                   )}
                 </section>
               </div>
@@ -343,60 +351,60 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
               <table className="admin-report-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Time / Category</th>
-                    <th>Reporter</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t('ID')}</th>
+                    <th>{t('Time / Category')}</th>
+                    <th>{t('Reporter')}</th>
+                    <th>{t('Description')}</th>
+                    <th>{t('Status')}</th>
+                    <th>{t('Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reports.length === 0 ? (
                     <tr>
-                      <td className="admin-report-empty" colSpan={6}>Currently, there are no citizen reports.</td>
+                      <td className="admin-report-empty" colSpan={6}>{t('Currently, there are no citizen reports.')}</td>
                     </tr>
                   ) : (
                     reports.map((report) => (
                       <tr key={report.id}>
                         <td className="admin-report-id">#{report.id}</td>
                         <td>
-                          <div className="admin-report-time">{report.time}</div>
-                          <div className="admin-report-category">{report.category}</div>
+                          <div className="admin-report-time">{t(String(report.time ?? ''))}</div>
+                          <div className="admin-report-category">{t(String(report.category ?? ''))}</div>
                           {(report.emergency_notification_needed || report.is_urgent_police) && (
-                            <span className="admin-report-urgent">Emergency notification needed</span>
+                            <span className="admin-report-urgent">{t('Emergency notification needed')}</span>
                           )}
                         </td>
                         <td>
-                          <div>{report.name}</div>
+                          <div>{t(String(report.name ?? ''))}</div>
                           <div className="admin-report-phone">{report.phone}</div>
                         </td>
                         <td className="admin-report-description">
-                          {report.text}
+                          {t(String(report.text ?? ''))}
                         </td>
                         <td>
                           {readOnlyDemo ? (
-                            <span className="demo-status">{report.status || 'pending'} · demo</span>
+                            <span className="demo-status">{t(statusLabels[report.status || 'pending'] ?? String(report.status))} · demo</span>
                           ) : (
                             <select
                               value={report.status || 'pending'}
                               onChange={(e) => handleStatusChange(report.id, e.target.value)}
                             >
-                              <option value="pending">Pending (Processing)</option>
-                              <option value="in-progress">In Progress (In Progress)</option>
-                              <option value="resolved">Resolved (Resolved)</option>
+                              <option value="pending">{t('Pending (Processing)')}</option>
+                              <option value="in-progress">{t('In Progress (In Progress)')}</option>
+                              <option value="resolved">{t('Resolved (Resolved)')}</option>
                             </select>
                           )}
                         </td>
                         <td>
                           {readOnlyDemo
-                            ? <span className="demo-status">No actions</span>
+                            ? <span className="demo-status">{t('No actions')}</span>
                             : (
                               <button
                                 className="admin-report-delete"
                                 onClick={() => handleDelete(report.id)}
                               >
-                                Delete
+                                {t('Delete')}
                               </button>
                             )}
                         </td>

@@ -3,6 +3,7 @@ import L from 'leaflet'
 import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './ReportLocationMap.css'
+import { useI18n } from '../i18n'
 
 const concepcionCenter: L.LatLngExpression = [-36.827063, -73.050201]
 
@@ -33,6 +34,7 @@ export default function ReportLocationMap({
   onLocationSelect,
   onDeviceLocation,
 }: ReportLocationMapProps) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<LeafletMap | null>(null)
   const markerRef = useRef<LeafletMarker | null>(null)
@@ -167,21 +169,21 @@ export default function ReportLocationMap({
   return (
     <div className="report-location-map-shell">
       <div className="report-location-map-toolbar">
-        <span className="report-location-status" role="status">{locationStatus}</span>
+        <span className="report-location-status" role="status">{t(locationStatus)}</span>
         <button
           className="report-location-device-button"
           disabled={isLocating}
           onClick={() => locateDevice(false)}
           type="button"
         >
-          {isLocating ? 'Locating...' : 'Use my device location'}
+          {isLocating ? t('Locating...') : t('Use my device location')}
         </button>
       </div>
       <div
         className="report-location-map"
         ref={containerRef}
         role="application"
-        aria-label="Select a report location on the map"
+        aria-label={t('Select a report location on the map')}
       />
     </div>
   )

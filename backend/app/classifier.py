@@ -127,8 +127,28 @@ def get_missing_information_prompt(
     first_citizen_message,
     missing_field,
     location_unavailable=False,
+    ui_language=None,
 ):
     text = first_citizen_message.lower()
+
+    if ui_language == "es" and not any(
+        "\u4e00" <= character <= "\u9fff" for character in text
+    ):
+        if missing_field == "address":
+            question = (
+                "No pude ubicar este lugar en el mapa. "
+                "¿Podría indicar una dirección más precisa o un punto de referencia cercano?"
+                if location_unavailable
+                else "¿Podría indicar la dirección o un punto de referencia cercano?"
+            )
+            return (
+                "Se necesita una dirección o un punto de referencia cercano que se pueda ubicar en el mapa.",
+                question,
+            )
+        return (
+            "Se necesita la fecha y hora del suceso, o cuándo se notó por primera vez.",
+            "¿Cuándo ocurrió esto, o cuándo lo notó por primera vez?",
+        )
 
     if any("\u4e00" <= character <= "\u9fff" for character in text):
         if missing_field == "address":
@@ -170,6 +190,7 @@ def classify_message(
     conversation_history,
     current_result=None,
     language_reference=None,
+    ui_language=None,
 ):
 
     conversation_text = format_conversation(
@@ -566,6 +587,7 @@ If all required information has been provided:
         ) = get_missing_information_prompt(
             first_citizen_message,
             "address",
+            ui_language=ui_language,
         )
     elif result["latitude"] is None or result["longitude"] is None:
         (
@@ -575,6 +597,7 @@ If all required information has been provided:
             first_citizen_message,
             "address",
             location_unavailable=True,
+            ui_language=ui_language,
         )
     elif not result.get("event_time"):
         (
@@ -583,6 +606,7 @@ If all required information has been provided:
         ) = get_missing_information_prompt(
             first_citizen_message,
             "event_time",
+            ui_language=ui_language,
         )
 
     result["location_description"] = result.get("address", "")

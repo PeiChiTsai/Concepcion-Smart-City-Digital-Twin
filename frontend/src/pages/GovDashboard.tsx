@@ -1,5 +1,6 @@
 import React from 'react'
 import { TelluxMap } from '../TelluxMap'
+import { useI18n } from '../i18n'
 
 type GovDashboardProps = {
   readOnlyDemo?: boolean
@@ -10,6 +11,8 @@ export default function GovDashboard({
   readOnlyDemo = false,
   publicReports = false,
 }: GovDashboardProps) {
+  const { t } = useI18n()
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       
@@ -26,8 +29,8 @@ export default function GovDashboard({
         
         {/* 用 span 把文字包起來，方便排版與調整字體 */}
         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
-          Concepcion Smart City Digital Twin Dashboard
-          {publicReports ? ' · Public read-only' : readOnlyDemo ? ' · Read-only demo' : ''}
+          {t('Concepcion Smart City Digital Twin Dashboard')}
+          {publicReports ? ` · ${t('Public read-only')}` : readOnlyDemo ? ` · ${t('Read-only demo')}` : ''}
         </span>
         
         {/* <button 

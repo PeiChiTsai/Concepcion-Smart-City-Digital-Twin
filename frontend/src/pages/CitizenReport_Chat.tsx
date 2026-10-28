@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import ReportLocationMap from './ReportLocationMap'
+import { useI18n } from '../i18n'
 import './CitizenReport_Chat.css'
 
 const backendUrl =
@@ -10,6 +11,10 @@ type ChatMessage = {
   id: number
   sender: 'assistant' | 'citizen'
   text: string
+}
+
+type RetryRequest = {
+  messageId: number
 }
 
 type ConversationStep = 'chat' | 'complete'
@@ -50,12 +55,16 @@ const initialMessages: ChatMessage[] = [
 ]
 
 export default function CitizenReportChat() {
+  const { t, language } = useI18n()
   // ==========================================
   // Chat state
   // ==========================================
 
   const [messages, setMessages] =
     useState<ChatMessage[]>(initialMessages)
+
+  const [retryRequest, setRetryRequest] =
+    useState<RetryRequest | null>(null)
 
   const [step, setStep] =
     useState<ConversationStep>('chat')
@@ -210,7 +219,7 @@ export default function CitizenReportChat() {
   const addMessage = (
     sender: ChatMessage['sender'],
     text: string
-  ) => {
+  ): number => {
     const id =
       ++nextMessageId.current
 
@@ -222,6 +231,8 @@ export default function CitizenReportChat() {
         text,
       },
     ])
+
+    return id
   }
 
 
@@ -229,11 +240,12 @@ export default function CitizenReportChat() {
   // Send message to FastAPI
   // ==========================================
 
-  const sendMessage = async (answer: string) => {
+  const sendMessage = async (answer: string, restartConversation = false) => {
     if (!answer || isLoading) {
       return
     }
 
+    setRetryRequest(null)
 
     // ----------------------------------------
     // Show citizen message immediately
@@ -279,13 +291,19 @@ export default function CitizenReportChat() {
               message: answer,
 
               conversation_history:
-                conversationHistory,
+                restartConversation
+                  ? []
+                  : conversationHistory,
 
               language_reference:
                 languageReferenceRef.current || answer,
 
+              ui_language: language,
+
               current_result:
-                currentResult,
+                restartConversation
+                  ? null
+                  : currentResult,
 
             }),
           }
@@ -319,6 +337,7 @@ export default function CitizenReportChat() {
         const result: APIResult =
           JSON.parse(responseText)
 
+      setRetryRequest(null)
 
       console.log(
         'AI RESULT:',
@@ -423,15 +442,22 @@ export default function CitizenReportChat() {
       // Add AI response
       // ======================================
 
-      if (
-        result.follow_up_question
-      ) {
+      const isComplete =
+        !result.missing_information &&
+        !result.follow_up_question
 
+      const completionMessage =
+        'Thank you for the information. Please submit your report using the button in the panel to the right.'
+
+      const assistantResponse =
+        result.follow_up_question ||
+        (isComplete ? completionMessage : '')
+
+      if (assistantResponse) {
         addMessage(
           'assistant',
-          result.follow_up_question
+          assistantResponse
         )
-
       }
 
 
@@ -448,12 +474,11 @@ export default function CitizenReportChat() {
           content: answer,
         },
 
-        ...(result.follow_up_question
+        ...(assistantResponse
           ? [
               {
                 role: 'assistant',
-                content:
-                  result.follow_up_question,
+                content: assistantResponse,
               },
             ]
           : []),
@@ -478,11 +503,6 @@ export default function CitizenReportChat() {
       // ======================================
       // Check whether report is complete
       // ======================================
-
-      const isComplete =
-        !result.missing_information &&
-        !result.follow_up_question
-
 
       if (isComplete) {
 
@@ -513,10 +533,13 @@ export default function CitizenReportChat() {
         )
       }
 
-      addMessage(
+      const errorMessageId = addMessage(
         'assistant',
         'Sorry, I could not process your report right now. Please try again.'
       )
+      setRetryRequest({
+        messageId: errorMessageId,
+      })
 
     } finally {
 
@@ -639,11 +662,13 @@ export default function CitizenReportChat() {
   // Start a new report
   // ==========================================
 
-  const startNewReport = () => {
+  const startNewReport = (initialDescription = '') => {
 
     setMessages(
       initialMessages
     )
+
+    setRetryRequest(null)
 
     nextMessageId.current = 1
 
@@ -694,6 +719,21 @@ export default function CitizenReportChat() {
     languageReferenceRef.current = ''
 
     setCurrentResult(null)
+
+    if (initialDescription) {
+      languageReferenceRef.current = initialDescription
+      setIssueDraft(initialDescription)
+      setDescription(initialDescription)
+      setHasStartedConversation(true)
+      void sendMessage(initialDescription, true)
+    }
+  }
+
+  const handleRetry = () => {
+    const initialDescription = issueDraft.trim()
+    if (!retryRequest || isLoading || !initialDescription) return
+
+    startNewReport(initialDescription)
   }
 
 
@@ -703,10 +743,10 @@ export default function CitizenReportChat() {
 
   const prompt =
     step === 'complete'
-      ? 'Your report is ready'
+      ? t('Your report is ready')
       : isLoading
-        ? 'AI is processing...'
-        : 'Describe the issue or answer the question...'
+        ? t('AI is processing...')
+        : t('Describe the issue or answer the question...')
 
 
   // ==========================================
@@ -743,6 +783,15 @@ export default function CitizenReportChat() {
     completedItems.length
 
 
+  const canSubmitReport =
+    Boolean(category) &&
+    Boolean(location.trim()) &&
+    latitude !== null &&
+    longitude !== null &&
+    Boolean(incidentTime.trim()) &&
+    emergencyAssessmentComplete
+
+
   const progress =
     Math.round(
       (completedCount /
@@ -776,19 +825,18 @@ export default function CitizenReportChat() {
                 className="citizen-chat-eyebrow-dot"
               />
 
-              CONCEPCIÓN · CITIZEN SERVICES
+              {t('CONCEPCIÓN · CITIZEN SERVICES')}
 
             </div>
 
 
             <h1>
-              Let’s make your city better.
+              {t('Let’s make your city better.')}
             </h1>
 
 
             <p>
-              Tell us what’s happening and
-              we’ll help prepare your report.
+              {t('Tell us what’s happening and we’ll help prepare your report.')}
             </p>
 
           </div>
@@ -798,7 +846,7 @@ export default function CitizenReportChat() {
 
             <span />
 
-            Submit completed reports to city services
+            {t('Submit completed reports to city services')}
 
           </div>
 
@@ -824,34 +872,34 @@ export default function CitizenReportChat() {
             >
               <div className="citizen-chat-contact-heading">
                 <div>
-                  <h2 id="citizen-chat-contact-title">Contact details</h2>
-                  <p>Optional · Saved with your report and not sent to the AI assistant.</p>
+                  <h2 id="citizen-chat-contact-title">{t('Contact details')}</h2>
+                  <p>{t('Optional · Saved with your report and not sent to the AI assistant.')}</p>
                 </div>
               </div>
               <div className="citizen-chat-contact-fields">
                 <label>
-                  <span>NAME</span>
+                  <span>{t('NAME')}</span>
                   <input
                     autoComplete="name"
                     name="contact-name"
                     onChange={(event) => setContactName(event.target.value)}
-                    placeholder="Your name"
+                    placeholder={t('Your name')}
                     value={contactName}
                   />
                 </label>
                 <label>
-                  <span>PHONE</span>
+                  <span>{t('PHONE')}</span>
                   <input
                     autoComplete="tel"
                     name="contact-phone"
                     onChange={(event) => setContactPhone(event.target.value)}
-                    placeholder="Your phone number"
+                    placeholder={t('Your phone number')}
                     type="tel"
                     value={contactPhone}
                   />
                 </label>
                 <label>
-                  <span>EMAIL</span>
+                  <span>{t('EMAIL')}</span>
                   <input
                     autoComplete="email"
                     name="contact-email"
@@ -870,12 +918,12 @@ export default function CitizenReportChat() {
                 onSubmit={handleInitialDescriptionSubmit}
               >
                 <label htmlFor="citizen-chat-initial-description">
-                  <span>WHAT WOULD YOU LIKE TO REPORT?</span>
+                  <span>{t('WHAT WOULD YOU LIKE TO REPORT?')}</span>
                   <textarea
                     id="citizen-chat-initial-description"
                     maxLength={2000}
                     onChange={(event) => setIssueDraft(event.target.value)}
-                    placeholder="Describe the issue, including what happened and where, if you know."
+                    placeholder={t('Describe the issue, including what happened and where, if you know.')}
                     required
                     rows={4}
                     value={issueDraft}
@@ -885,7 +933,7 @@ export default function CitizenReportChat() {
                   disabled={!issueDraft.trim() || isLoading}
                   type="submit"
                 >
-                  {isLoading ? 'Starting conversation...' : 'Start conversation'}
+                  {isLoading ? t('Starting conversation...') : t('Start conversation')}
                   <span aria-hidden="true">↑</span>
                 </button>
               </form>
@@ -894,7 +942,7 @@ export default function CitizenReportChat() {
             {hasStartedConversation && (
             <section
               className="citizen-chat-card"
-              aria-label="Citizen report conversation"
+              aria-label={t('Citizen report conversation')}
             >
 
 
@@ -917,7 +965,7 @@ export default function CitizenReportChat() {
               >
 
                 <strong>
-                  Concepción City Assistant
+                  {t('Concepción City Assistant')}
                 </strong>
 
 
@@ -926,8 +974,8 @@ export default function CitizenReportChat() {
                   <i />
 
                   {isLoading
-                    ? 'Processing...'
-                    : 'Ready to help'}
+                    ? t('Processing...')
+                    : t('Ready to help')}
 
                 </span>
 
@@ -942,7 +990,7 @@ export default function CitizenReportChat() {
                   ●
                 </span>
 
-                Preview conversation
+                {t('Preview conversation')}
 
               </div>
 
@@ -956,7 +1004,8 @@ export default function CitizenReportChat() {
 
             <div
               className="citizen-chat-progress"
-              aria-label={`Report progress: ${completedCount} of ${totalDetails} details`}
+              aria-label={t('Report progress: {completed} of {total} details', { completed: completedCount, total: totalDetails })}
+
             >
 
               <div
@@ -964,12 +1013,12 @@ export default function CitizenReportChat() {
               >
 
                 <span>
-                  REPORT DETAILS
+                  {t('REPORT DETAILS')}
                 </span>
 
 
                 <span>
-                  {completedCount} OF {totalDetails}
+                  {t('{completed} OF {total}', { completed: completedCount, total: totalDetails })}
                 </span>
 
               </div>
@@ -1008,7 +1057,7 @@ export default function CitizenReportChat() {
               >
 
                 <span>
-                  TODAY
+                  {t('TODAY')}
                 </span>
 
               </div>
@@ -1040,7 +1089,7 @@ export default function CitizenReportChat() {
                       <div
                         className="citizen-chat-bubble"
                       >
-                        {message.text}
+                        {message.sender === 'assistant' ? t(message.text) : message.text}
                       </div>
 
 
@@ -1050,12 +1099,23 @@ export default function CitizenReportChat() {
 
                         {message.sender ===
                           'assistant'
-                          ? 'City Assistant'
-                          : 'You'}
+                          ? t('City Assistant')
+                          : t('You')}
 
-                        {' · just now'}
+                        {' · '}{t('just now')}
 
                       </span>
+
+                      {retryRequest?.messageId === message.id && (
+                        <button
+                          type="button"
+                          className="citizen-chat-retry-button"
+                          disabled={isLoading}
+                          onClick={handleRetry}
+                        >
+                          {isLoading ? t('Retrying...') : t('Retry')}
+                        </button>
+                      )}
 
                     </div>
 
@@ -1089,14 +1149,14 @@ export default function CitizenReportChat() {
                     <div
                       className="citizen-chat-bubble"
                     >
-                      Thinking...
+                      {t('Thinking...')}
                     </div>
 
 
                     <span
                       className="citizen-chat-message-time"
                     >
-                      City Assistant · just now
+                      {t('City Assistant')} · {t('just now')}
                     </span>
 
                   </div>
@@ -1106,44 +1166,6 @@ export default function CitizenReportChat() {
               )}
 
 
-
-              {/* ---------------------------------
-                  COMPLETE
-              ---------------------------------- */}
-
-              {step === 'complete' && (
-                <div className="citizen-chat-completion-actions">
-                  {submittedReportId !== null ? (
-                    <p className="citizen-chat-submit-success" role="status">
-                      Report #{submittedReportId} was submitted successfully.
-                    </p>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="citizen-chat-submit-report"
-                        disabled={isSubmittingReport}
-                        onClick={handleSubmitReport}
-                      >
-                        {isSubmittingReport ? 'Submitting...' : 'Submit report'}
-                      </button>
-                      {submissionError && (
-                        <p className="citizen-chat-submit-error" role="alert">
-                          {submissionError}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    className="citizen-chat-new-report"
-                    onClick={startNewReport}
-                  >
-                    Start a new report
-                  </button>
-                </div>
-
-              )}
 
             </div>
 
@@ -1162,7 +1184,7 @@ export default function CitizenReportChat() {
                 className="citizen-chat-sr-only"
                 htmlFor="citizen-chat-input"
               >
-                Your message
+                {t('Your message')}
               </label>
 
 
@@ -1190,11 +1212,12 @@ export default function CitizenReportChat() {
                   step === 'complete' ||
                   isLoading
                 }
-                aria-label="Send message"
+                aria-label={t('Send message')}
+
               >
 
                 <span>
-                  Send
+                  {t('Send')}
                 </span>
 
                 <span aria-hidden="true">
@@ -1209,8 +1232,7 @@ export default function CitizenReportChat() {
             <div
               className="citizen-chat-composer-note"
             >
-              Please don’t include sensitive
-              personal information in this demo.
+              {t('Please don’t include sensitive personal information in this demo.')}
             </div>
 
             </section>
@@ -1227,15 +1249,15 @@ export default function CitizenReportChat() {
             <section className="citizen-chat-map-card" aria-labelledby="citizen-chat-map-title">
               <div className="citizen-chat-map-heading">
                 <div>
-                  <h2 id="citizen-chat-map-title">Select a location</h2>
+                  <h2 id="citizen-chat-map-title">{t('Select a location')}</h2>
                   <p>
                     {latitude !== null && longitude !== null
                       ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-                      : 'AI will focus the map when it finds a location. You can also click the map.'}
+                      : t('AI will focus the map when it finds a location. You can also click the map.')}
                   </p>
                 </div>
                 {latitude !== null && longitude !== null && (
-                  <span className="citizen-chat-map-selected">PIN SET</span>
+                  <span className="citizen-chat-map-selected">{t('PIN SET')}</span>
                 )}
               </div>
               <ReportLocationMap
@@ -1270,11 +1292,11 @@ export default function CitizenReportChat() {
               <div>
 
                 <h2>
-                  Your report
+                  {t('Your report')}
                 </h2>
 
                 <p>
-                  Draft summary
+                  {t('Draft summary')}
                 </p>
 
               </div>
@@ -1283,7 +1305,7 @@ export default function CitizenReportChat() {
               <span
                 className="citizen-chat-draft-badge"
               >
-                DRAFT
+                {t('DRAFT')}
               </span>
 
             </div>
@@ -1318,13 +1340,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    CATEGORY
+                    {t('CATEGORY')}
                   </span>
 
 
                   <p>
                     {category ||
-                      'Waiting for classification'}
+                      t('Waiting for classification')}
                   </p>
 
                 </div>
@@ -1338,8 +1360,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     category
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1366,13 +1388,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    RESPONSIBLE DEPARTMENT
+                    {t('RESPONSIBLE DEPARTMENT')}
                   </span>
 
 
                   <p>
                     {department ||
-                      'Waiting for routing'}
+                      t('Waiting for routing')}
                   </p>
 
                 </div>
@@ -1386,8 +1408,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     department
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1414,13 +1436,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    WHAT HAPPENED
+                    {t('WHAT HAPPENED')}
                   </span>
 
 
                   <p>
                     {description ||
-                      'Waiting for details'}
+                      t('Waiting for details')}
                   </p>
 
                 </div>
@@ -1434,8 +1456,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     description
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1462,13 +1484,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    ADDRESS
+                    {t('ADDRESS')}
                   </span>
 
 
                   <p>
                     {location ||
-                      'Waiting for location'}
+                      t('Waiting for location')}
                   </p>
 
                 </div>
@@ -1482,8 +1504,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     location
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1510,7 +1532,7 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    COORDINATES
+                    {t('COORDINATES')}
                   </span>
 
 
@@ -1525,7 +1547,7 @@ export default function CitizenReportChat() {
                           6
                         )}`
 
-                      : 'Waiting for geolocation'}
+                      : t('Waiting for geolocation')}
 
                   </p>
 
@@ -1542,8 +1564,8 @@ export default function CitizenReportChat() {
                   aria-label={
                     latitude !== null &&
                     longitude !== null
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1570,13 +1592,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    EVENT TIME
+                    {t('EVENT TIME')}
                   </span>
 
 
                   <p>
                     {incidentTime ||
-                      'Waiting for event time'}
+                      t('Waiting for event time')}
                   </p>
 
                 </div>
@@ -1590,8 +1612,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     incidentTime
-                      ? 'Provided'
-                      : 'Not provided'
+                      ? t('Provided')
+                      : t('Not provided')
                   }
                 />
 
@@ -1618,13 +1640,13 @@ export default function CitizenReportChat() {
                   <span
                     className="citizen-chat-field-label"
                   >
-                    ADDITIONAL DETAIL
+                    {t('ADDITIONAL DETAIL')}
                   </span>
 
 
                   <p>
                     {additionalDetail ||
-                      'None provided'}
+                      t('None provided')}
                   </p>
 
                 </div>
@@ -1638,8 +1660,8 @@ export default function CitizenReportChat() {
                   }`}
                   aria-label={
                     additionalDetail
-                      ? 'Provided'
-                      : 'None provided'
+                      ? t('Provided')
+                      : t('None provided')
                   }
                 />
 
@@ -1648,18 +1670,18 @@ export default function CitizenReportChat() {
               <div className="citizen-chat-summary-field">
                 <span className="citizen-chat-field-icon" aria-hidden="true">!</span>
                 <div>
-                  <span className="citizen-chat-field-label">EMERGENCY NOTIFICATION</span>
+                  <span className="citizen-chat-field-label">{t('EMERGENCY NOTIFICATION')}</span>
                   <p>
                     {!emergencyAssessmentComplete
-                      ? 'Waiting for assessment'
+                      ? t('Waiting for assessment')
                       : emergencyNotificationNeeded
-                        ? `${emergencyNotificationReason || 'Immediate notification recommended'} · not sent`
-                        : 'Not required'}
+                        ? `${t(emergencyNotificationReason || 'Immediate notification recommended')} · ${t('not sent')}`
+                        : t('Not required')}
                   </p>
                 </div>
                 <span
                   className={`citizen-chat-field-status ${emergencyAssessmentComplete ? 'is-filled' : ''}`}
-                  aria-label={emergencyAssessmentComplete ? 'Assessed' : 'Not assessed'}
+                  aria-label={emergencyAssessmentComplete ? t('Assessed') : t('Not assessed')}
                 />
               </div>
 
@@ -1706,8 +1728,8 @@ export default function CitizenReportChat() {
                 <strong>
 
                   {location
-                    ? 'Location added'
-                    : 'Location helps us respond'}
+                    ? t('Location added')
+                    : t('Location helps us respond')}
 
                 </strong>
 
@@ -1717,13 +1739,13 @@ export default function CitizenReportChat() {
                   {latitude !== null &&
                     longitude !== null
 
-                  ? 'Coordinates are set and marked on the map.'
+                  ? t('Coordinates are set and marked on the map.')
 
                     : location
 
-                      ? 'The reported location has been identified. Waiting for coordinates.'
+                      ? t('The reported location has been identified. Waiting for coordinates.')
 
-                      : 'Share an address or nearby landmark in the chat.'}
+                      : t('Share an address or nearby landmark in the chat.')}
 
                 </p>
 
@@ -1747,10 +1769,45 @@ export default function CitizenReportChat() {
 
 
               <p>
-                Your report details and answers are saved only after you select Submit report.
-                AI assistant messages are not stored. Emergency notifications are not sent automatically.
+                {t('Your report details and answers are saved only after you select Submit report. AI assistant messages are not stored. Emergency notifications are not sent automatically.')}
               </p>
 
+            </div>
+
+            <div className="citizen-chat-completion-actions">
+              {submittedReportId !== null ? (
+                <p className="citizen-chat-submit-success" role="status">
+                  {t('Report #{id} was submitted successfully.', { id: submittedReportId })}
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="citizen-chat-submit-report"
+                    disabled={!canSubmitReport || isSubmittingReport}
+                    onClick={handleSubmitReport}
+                  >
+                    {isSubmittingReport ? t('Submitting...') : t('Submit report')}
+                  </button>
+                  {!canSubmitReport && (
+                    <p className="citizen-chat-submit-hint">
+                      {t('Complete the basic details above to enable submitting.')}
+                    </p>
+                  )}
+                  {submissionError && (
+                    <p className="citizen-chat-submit-error" role="alert">
+                      {t(submissionError)}
+                    </p>
+                  )}
+                </>
+              )}
+              <button
+                type="button"
+                className="citizen-chat-new-report"
+                onClick={() => startNewReport()}
+              >
+                {t('Start a new report')}
+              </button>
             </div>
 
           </aside>
@@ -1769,16 +1826,14 @@ export default function CitizenReportChat() {
         >
 
           <span>
-            For emergencies requiring immediate
-            assistance, contact local emergency
-            services directly.
+            {t('For emergencies requiring immediate assistance, contact local emergency services directly.')}
           </span>
 
 
           <span>
-            City of Concepción
+            {t('City of Concepción')}
             <b> · </b>
-            Citizen Reporting
+            {t('Citizen Reporting')}
           </span>
 
         </footer>

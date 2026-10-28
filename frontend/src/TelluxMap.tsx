@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } from 'tellux'
 import { supabase } from './supabaseClient'
 import { demoReports } from './demoReports'
+import { useI18n } from './i18n'
 import './TelluxMap.css'
 import reportedCases2023Url from '../../backend/data/2023-reported-cases.csv?url'
 import reportedCases2024Url from '../../backend/data/2024-reported-cases.csv?url'
@@ -271,6 +272,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
   readOnlyDemo = false,
   publicReports = false,
 }) => {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
   const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
@@ -930,7 +932,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             zIndex: 1100
           }}
         >
-          {hoverInfo.text}
+          {t(hoverInfo.text)}
         </div>
       )}
 
@@ -966,9 +968,9 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               color: "#aaa"
             }}
           >
-            Longitude: {popupFeature.cartographic.longitude.toFixed(5)}
+            {t('Longitude:')} {popupFeature.cartographic.longitude.toFixed(5)}
             <br />
-            Latitude: {popupFeature.cartographic.latitude.toFixed(5)}
+            {t('Latitude:')} {popupFeature.cartographic.latitude.toFixed(5)}
           </p>
 
           <table
@@ -1044,7 +1046,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               paddingBottom: "8px"
             }}
           >
-            🚨 Citizen Reported Case
+            🚨 {t('Citizen Reported Case')}
           </h2>
 
 <div
@@ -1058,17 +1060,17 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
           >
             {/* 類別 */}
             <p style={{ margin: 0 }}>
-              <strong>Category:</strong> {popupReport.category || "N/A"}
+              <strong>{t('Category:')}</strong> {popupReport.category || t('N/A')}
             </p>
 
             <p style={{ margin: 0 }}>
-              <strong>Status:</strong> {getReportStatusLabel(popupReport.status)}
+              <strong>{t('Status:')}</strong> {t(getReportStatusLabel(popupReport.status))}
             </p>
 
             {/* 是否緊急通報警局 */}
             {popupReport.emergencyNotificationNeeded && (
               <p style={{ margin: 0, background: "rgba(0,0,0,0.15)", padding: "4px 8px", borderRadius: "4px", fontWeight: "bold" }}>
-                Emergency notification recommended · not sent
+                {t('Emergency notification recommended · not sent')}
               </p>
             )}
 
@@ -1076,47 +1078,47 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             {!popupReport.isPublic && (
               <>
                 <p style={{ margin: 0 }}>
-                  <strong>Name:</strong> {popupReport.name || "Anonymous"}
+                  <strong>{t('Name:')}</strong> {popupReport.name || t('Anonymous')}
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong>Phone:</strong> {popupReport.phone || "N/A"}
+                  <strong>{t('Phone:')}</strong> {popupReport.phone || t('N/A')}
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong>Email:</strong> {popupReport.email || "N/A"}
+                  <strong>{t('Email:')}</strong> {popupReport.email || t('N/A')}
                 </p>
               </>
             )}
 
             {popupReport.address && (
               <p style={{ margin: 0 }}>
-                <strong>Location:</strong> {popupReport.address}
+                <strong>{t('Location:')}</strong> {popupReport.address}
               </p>
             )}
 
             {popupReport.eventTime && (
               <p style={{ margin: 0 }}>
-                <strong>Event time:</strong> {popupReport.eventTime}
+                <strong>{t('Event time:')}</strong> {popupReport.eventTime}
               </p>
             )}
 
             {popupReport.department && (
               <p style={{ margin: 0 }}>
-                <strong>Responsible department:</strong> {popupReport.department}
+                <strong>{t('Responsible department:')}</strong> {popupReport.department}
               </p>
             )}
 
             <p style={{ margin: "4px 0" }}>
-              <strong>Report Time:</strong>{" "}
+              <strong>{t('Report Time:')}</strong>{" "}
               {popupReport.time}
             </p>
 
             <p style={{ margin: "4px 0" }}>
-              <strong>Content:</strong>
+              <strong>{t('Content:')}</strong>
             </p>
 
             {popupReport.isPublic ? (
               <p style={{ margin: "4px 0", fontStyle: "italic" }}>
-                Personal contact information and detailed descriptions are hidden in public view.
+                {t('Personal contact information and detailed descriptions are hidden in public view.')}
               </p>
             ) : (
               <p
@@ -1146,7 +1148,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               fontWeight: "bold"
             }}
           >
-            Close
+            {t('Close')}
           </button>
         </div>
       )}
@@ -1154,21 +1156,21 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
       <aside
         className={`report-layer-drawer${isLayerPanelOpen ? ' is-open' : ''}`}
         style={{ width: isLayerPanelOpen ? layerPanelWidth : 48 }}
-        aria-label="Report layer controls"
+        aria-label={t('Report layer controls')}
       >
         {isLayerPanelOpen ? (
           <>
             <div className="report-layer-header">
               <div>
-                <span className="report-layer-eyebrow">MAP CONTROLS</span>
-                <strong>Report layers</strong>
+                <span className="report-layer-eyebrow">{t('MAP CONTROLS')}</span>
+                <strong>{t('Report layers')}</strong>
               </div>
               <button
                 className="report-layer-collapse"
                 type="button"
                 onClick={() => setIsLayerPanelOpen(false)}
-                aria-label="Collapse report layers"
-                title="Collapse"
+                aria-label={t('Collapse report layers')}
+                title={t('Collapse')}
               >
                 ‹
               </button>
@@ -1178,21 +1180,21 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               type="button"
               onClick={recenterMap}
               disabled={!isViewerReady}
-              title="Return to the city center"
+              title={t('Return to the city center')}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3v3m0 12v3M3 12h3m12 0h3" />
                 <circle cx="12" cy="12" r="6" />
                 <circle cx="12" cy="12" r="1" />
               </svg>
-              <span>Recenter map</span>
+              <span>{t('Recenter map')}</span>
             </button>
             <div className="report-layer-options">
               {([
-                { layer: 'pending', label: 'Pending', color: '#22c55e' },
-                { layer: 'in-progress', label: 'In Progress', color: '#facc15' },
-                { layer: 'resolved', label: 'Resolved', color: '#ffffff' },
-                { layer: 'urgent', label: 'Emergency Notification Needed', color: '#dc2626' }
+                { layer: 'pending', label: t('Pending'), color: '#22c55e' },
+                { layer: 'in-progress', label: t('In Progress'), color: '#facc15' },
+                { layer: 'resolved', label: t('Resolved'), color: '#ffffff' },
+                { layer: 'urgent', label: t('Emergency Notification Needed'), color: '#dc2626' }
               ] as const).map(({ layer, label, color }) => (
                 <label className="report-layer-option" key={layer}>
                   <input
@@ -1210,26 +1212,26 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 </label>
               ))}
             </div>
-            <section className="report-statistics" aria-label="Report statistics">
+            <section className="report-statistics" aria-label={t('Report statistics')}>
               <div className="report-statistics-heading">
-                <span className="report-layer-eyebrow">CITY SNAPSHOT</span>
-                <span>{mapReports.length} reports</span>
+                <span className="report-layer-eyebrow">{t('CITY SNAPSHOT')}</span>
+                <span>{t('{count} reports', { count: mapReports.length })}</span>
               </div>
               <div className="report-stat-cards">
                 <div className="report-stat-card">
                   <strong>{reportStatusCounts.pending + reportStatusCounts['in-progress']}</strong>
-                  <span>Open</span>
+                  <span>{t('Open')}</span>
                 </div>
                 <div className="report-stat-card is-alert">
                   <strong>{reportStatusCounts.urgent}</strong>
-                  <span>Urgent</span>
+                  <span>{t('Urgent')}</span>
                 </div>
               </div>
-              <div className="report-stat-statuses" aria-label="Reports by status">
+              <div className="report-stat-statuses" aria-label={t('Reports by status')}>
                 {([
-                  { layer: 'pending', label: 'Pending', color: '#22c55e' },
-                  { layer: 'in-progress', label: 'In progress', color: '#facc15' },
-                  { layer: 'resolved', label: 'Resolved', color: '#a8b5c4' },
+                  { layer: 'pending', label: t('Pending'), color: '#22c55e' },
+                  { layer: 'in-progress', label: t('In progress'), color: '#facc15' },
+                  { layer: 'resolved', label: t('Resolved'), color: '#a8b5c4' },
                 ] as const).map(({ layer, label, color }) => {
                   const count = reportStatusCounts[layer]
                   const percentage = mapReports.length
@@ -1249,28 +1251,28 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 })}
               </div>
               <div className="report-stat-categories">
-                <span className="report-stat-subheading">TOP CATEGORIES</span>
+                <span className="report-stat-subheading">{t('TOP CATEGORIES')}</span>
                 {topReportCategories.length ? topReportCategories.map(([category, count]) => (
-                  <div className="report-stat-category" key={category} title={category}>
-                    <span>{category}</span>
+                  <div className="report-stat-category" key={category} title={t(category)}>
+                    <span>{t(category)}</span>
                     <strong>{count}</strong>
                     <i>
                       <b style={{ width: `${(count / maxCategoryCount) * 100}%` }} />
                     </i>
                   </div>
                 )) : (
-                  <p className="report-stat-empty">No report data available.</p>
+                  <p className="report-stat-empty">{t('No report data available.')}</p>
                 )}
               </div>
               <div className="historical-report-statistics">
                 <div className="historical-report-heading">
-                  <span className="report-stat-subheading">HISTORICAL TOP 14</span>
+                  <span className="report-stat-subheading">{t('HISTORICAL TOP 14')}</span>
                   <label>
-                    <span className="sr-only">Select report year</span>
+                    <span className="sr-only">{t('Select report year')}</span>
                     <select
                       value={historicalReportYear}
                       onChange={event => setHistoricalReportYear(event.target.value as HistoricalReportYear)}
-                      aria-label="Select report year"
+                      aria-label={t('Select report year')}
                     >
                       {Object.keys(historicalReportFiles)
                         .sort((first, second) => Number(second) - Number(first))
@@ -1282,13 +1284,13 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 </div>
                 
                 {historicalReportStatsError ? (
-                  <p className="report-stat-empty" role="alert">{historicalReportStatsError}</p>
+                  <p className="report-stat-empty" role="alert">{t(historicalReportStatsError)}</p>
                 ) : selectedHistoricalReportStats.length ? (
                   <ol className="historical-report-list">
                     {selectedHistoricalReportStats.map(({ category, count }, index) => (
                       <li className="historical-report-item" key={`${category}-${index}`}>
                         <span className="historical-report-rank">{index + 1}</span>
-                        <span className="historical-report-name" title={category}>{category}</span>
+                        <span className="historical-report-name" title={t(category)}>{t(category)}</span>
                         <strong>{count.toLocaleString()}</strong>
                         <i>
                           <b style={{ width: `${(count / maxHistoricalReportCount) * 100}%` }} />
@@ -1297,7 +1299,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                     ))}
                   </ol>
                 ) : (
-                  <p className="report-stat-empty">Loading annual report data...</p>
+                  <p className="report-stat-empty">{t('Loading annual report data...')}</p>
                 )}
               </div>
             </section>
@@ -1305,7 +1307,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               className="report-layer-resize"
               role="separator"
               aria-orientation="vertical"
-              aria-label="Resize report layer panel"
+              aria-label={t('Resize report layer panel')}
               aria-valuemin={220}
               aria-valuemax={Math.min(480, typeof window === 'undefined' ? 480 : window.innerWidth * 0.7)}
               aria-valuenow={layerPanelWidth}
@@ -1330,14 +1332,14 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             className="report-layer-expand"
             type="button"
             onClick={() => setIsLayerPanelOpen(true)}
-            aria-label="Expand report layers"
-            title="Report layers"
+            aria-label={t('Expand report layers')}
+            title={t('Report layers')}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="m12 3 9 5-9 5-9-5 9-5Z" />
               <path d="m3 12 9 5 9-5M3 16l9 5 9-5" />
             </svg>
-            <span>LAYERS</span>
+            <span>{t('LAYERS')}</span>
           </button>
         )}
       </aside>

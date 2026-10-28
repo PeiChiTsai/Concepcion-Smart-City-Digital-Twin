@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage'
 import AboutPage from './pages/AboutPage'
 import MunicipalAccess from './pages/MunicipalAccess'
 import { supabase, supabaseConfigured } from './supabaseClient'
+import { LanguageProvider, LanguageSwitcher, useI18n } from './i18n'
 
 function MunicipalRoute({
   authLoading,
@@ -20,8 +21,9 @@ function MunicipalRoute({
   children: React.ReactNode
 }) {
   const location = useLocation()
+  const { t } = useI18n()
 
-  if (authLoading) return <div className="auth-loading">Connecting to city services...</div>
+  if (authLoading) return <div className="auth-loading">{t('Connecting to city services...')}</div>
   if (!user) {
     return <Navigate to="/municipal-access" replace state={{ from: location.pathname }} />
   }
@@ -39,8 +41,9 @@ function CitizenRoute({
   children: React.ReactNode
 }) {
   const location = useLocation()
+  const { t } = useI18n()
 
-  if (authLoading) return <div className="auth-loading">Connecting to city services...</div>
+  if (authLoading) return <div className="auth-loading">{t('Connecting to city services...')}</div>
   if (!user) {
     return <Navigate to="/citizen-access" replace state={{ from: location.pathname }} />
   }
@@ -56,6 +59,7 @@ function hasMunicipalApproval(user: User | null) {
 function AppContent() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { t } = useI18n()
   const isHome = pathname === '/'
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(supabaseConfigured)
@@ -65,8 +69,8 @@ function AppContent() {
   const isMunicipalAccount = isMunicipalApproved
     || user?.user_metadata?.requested_role === 'municipal'
   const accountLabel = isMunicipalAccount
-    ? 'MUNICIPAL ACCOUNT'
-    : 'CITIZEN ACCOUNT'
+    ? t('MUNICIPAL ACCOUNT')
+    : t('CITIZEN ACCOUNT')
 
   useEffect(() => {
     if (!supabase) {
@@ -86,14 +90,14 @@ function AppContent() {
       if (!isMounted) return
       if (error) {
         console.error('Failed to restore Supabase session:', error)
-        setAuthError('Unable to restore your city account session. Refresh the page or sign in again.')
+        setAuthError('restore-session')
       }
       setSession(data.session)
       setAuthLoading(false)
     }).catch((error: unknown) => {
       if (!isMounted) return
       console.error('Failed to restore Supabase session:', error)
-      setAuthError('Unable to restore your city account session. Refresh the page or sign in again.')
+      setAuthError('restore-session')
       setAuthLoading(false)
     })
 
@@ -108,7 +112,7 @@ function AppContent() {
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Failed to sign out:', error)
-      setAuthError('Unable to sign out. Please try again.')
+      setAuthError('sign-out')
       return
     }
     setAuthError('')
@@ -129,24 +133,27 @@ function AppContent() {
           <span className="app-brand-name">CONCEPCIÓN<span className="app-brand-light">SMART CITY</span></span>
         </Link>
         <div className="app-nav-links">
-          <NavLink to="/about">About</NavLink>
+          <NavLink to="/about">{t('About')}</NavLink>
           {/* <NavLink to="/report">Citizen report</NavLink> */}
-          <NavLink to="/report-chat">AI assistant</NavLink>
-          <NavLink to="/dashboard">3D digital twin</NavLink>
-          <NavLink to={user ? '/admin' : '/municipal-access'}>City operations</NavLink>
+          <NavLink to="/report-chat">{t('AI assistant')}</NavLink>
+          <NavLink to="/dashboard">{t('3D digital twin')}</NavLink>
+          <NavLink to={user ? '/admin' : '/municipal-access'}>{t('City operations')}</NavLink>
         </div>
-        {user ? (
-          <div className="app-nav-account">
-            <span className={`app-nav-account-role${isMunicipalApproved ? ' is-approved' : ''}`}>
-              {accountLabel}
-            </span>
-            <button className="app-nav-home app-nav-logout" onClick={signOut} type="button">
-              Sign out
-            </button>
-          </div>
-        ) : (
-          <Link className="app-nav-home" to="/citizen-access">Log in / Create account</Link>
-        )}
+        <div className="app-nav-right">
+          {user ? (
+            <div className="app-nav-account">
+              <span className={`app-nav-account-role${isMunicipalApproved ? ' is-approved' : ''}`}>
+                {accountLabel}
+              </span>
+              <button className="app-nav-home app-nav-logout" onClick={signOut} type="button">
+                {t('Sign out')}
+              </button>
+            </div>
+          ) : (
+            <Link className="app-nav-home" to="/citizen-access">{t('Log in / Create account')}</Link>
+          )}
+          <LanguageSwitcher />
+        </div>
       </nav>
 
       <main className={`app-content${isHome ? ' app-content-home' : ''}${pathname === '/admin' ? ' app-content-admin' : ''}`}>
@@ -160,7 +167,9 @@ function AppContent() {
               borderBottom: '1px solid #fecaca',
             }}
           >
-            {authError}
+            {authError === 'restore-session'
+              ? t('Unable to restore your city account session. Refresh the page or sign in again.')
+              : t('Unable to sign out. Please try again.')}
           </div>
         )}
         <Routes>
@@ -196,8 +205,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AppContent />
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <AppContent />
+      </BrowserRouter>
+    </LanguageProvider>
   )
 }

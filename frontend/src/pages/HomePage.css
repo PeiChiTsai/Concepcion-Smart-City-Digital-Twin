@@ -1037,6 +1037,46 @@
   gap: 10px;
 }
 
+.app-nav-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.language-switcher {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgba(83, 228, 223, .32);
+  border-radius: 2px;
+}
+
+.language-switcher button {
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  color: #91a8b3;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  transition: background .2s ease, color .2s ease;
+}
+
+.language-switcher button + button {
+  border-left: 1px solid rgba(83, 228, 223, .32);
+}
+
+.language-switcher button:hover {
+  color: #eaf5fb;
+}
+
+.language-switcher button.is-active {
+  background: #53e4df;
+  color: #06252e;
+}
+
 .app-nav-account-role {
   padding: 6px 8px;
   border: 1px solid rgba(145, 168, 179, .36);
