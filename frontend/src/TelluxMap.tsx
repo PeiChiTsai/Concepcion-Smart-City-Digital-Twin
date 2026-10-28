@@ -400,7 +400,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
     reportEntitiesRef.current.forEach(({ entity, layer, timestamp }) => {
       entity.show = reportLayerFilters[layer] && isInTimeRange(timestamp, reportTimeRangeRef.current)
     })
-  }, [reportLayerFilters, reportTimeRange])
+  }, [reportLayerFilters, reportTimeRange, isViewerReady, mapReports])
 
   const toggleReportLayer = (layer: ReportLayer, checked: boolean) => {
     const nextFilters = { ...reportLayerFiltersRef.current, [layer]: checked }
@@ -650,6 +650,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             }
           }
         }
+
+        if (isCancelled) return
 
         setMapReports(reports ?? [])
 
