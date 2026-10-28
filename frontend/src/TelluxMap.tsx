@@ -261,10 +261,65 @@ function getReportStatusLabel(status: unknown) {
   return labels[normalizedStatus] ?? String(status ?? 'Pending')
 }
 
+const reportPinIconCache = new Map<string, string>()
+
+// Pin with a dark outline, white ring and drop shadow so it stands out from the map.
+function getReportPinIcon(color: string) {
+  const cached = reportPinIconCache.get(color)
+  if (cached) return cached
+
+  const width = 56
+  const height = 72
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return REPORT_PIN_ICON
+
+  const cx = width / 2
+  const radius = 17
+  const cy = 24
+  const tipY = height - 8
+  const tracePin = () => {
+    ctx.beginPath()
+    ctx.arc(cx, cy, radius, Math.PI * 0.8, Math.PI * 0.2, false)
+    ctx.lineTo(cx, tipY)
+    ctx.closePath()
+  }
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+  ctx.shadowBlur = 6
+  ctx.shadowOffsetY = 3
+  tracePin()
+  ctx.fillStyle = '#0b1220'
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 8
+  ctx.strokeStyle = '#0b1220'
+  ctx.stroke()
+  ctx.fill()
+
+  ctx.shadowColor = 'transparent'
+  tracePin()
+  ctx.lineWidth = 4
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  ctx.fillStyle = color
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(11, 18, 32, 0.8)'
+  ctx.fill()
+
+  const url = canvas.toDataURL('image/png')
+  reportPinIconCache.set(color, url)
+  return url
+}
+
 function getReportPinScale(cameraHeight: number) {
   const referenceHeight = 800
   const size = 22 * Math.sqrt(referenceHeight / Math.max(cameraHeight, 1))
-  return Math.min(1, Math.max(0.25, size / 32))
+  return Math.min(1, Math.max(0.25, size / 32)) * 0.6
 }
 
 type TelluxMapProps = {
@@ -608,10 +663,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               position: [report.lon, report.lat, 80],
               symbol: {
                 icon: {
-                  image: REPORT_PIN_ICON,
+                  image: getReportPinIcon(getReportColor(report)),
                   scale: getReportPinScale(CAMERA_VIEW.height),
-                  color: getReportColor(report),
-                  colorize: true,
+                  color: '#ffffff',
+                  colorize: false,
                 },
                 anchor: "bottom",
               },
