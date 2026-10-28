@@ -4,7 +4,7 @@ export type DemoReport = {
   phone: string
   email: string
   category: string
-  is_urgent_police: boolean
+  emergency_notification_needed: boolean
   text: string
   lat: number
   lon: number
@@ -19,7 +19,7 @@ export const demoReports: DemoReport[] = [
     phone: '—',
     email: '—',
     category: 'Roads & Infrastructure',
-    is_urgent_police: false,
+    emergency_notification_needed: false,
     text: 'Demonstration report: a streetlight needs inspection near Plaza Independencia.',
     lat: -36.8272,
     lon: -73.0501,
@@ -32,7 +32,7 @@ export const demoReports: DemoReport[] = [
     phone: '—',
     email: '—',
     category: 'Waste Management',
-    is_urgent_police: false,
+    emergency_notification_needed: false,
     text: 'Demonstration report: a public recycling station is ready for collection.',
     lat: -36.8248,
     lon: -73.0448,
@@ -45,7 +45,7 @@ export const demoReports: DemoReport[] = [
     phone: '—',
     email: '—',
     category: 'Roads & Infrastructure',
-    is_urgent_police: false,
+    emergency_notification_needed: false,
     text: 'Demonstration report: sidewalk maintenance requested near Parque Ecuador.',
     lat: -36.8334,
     lon: -73.0464,

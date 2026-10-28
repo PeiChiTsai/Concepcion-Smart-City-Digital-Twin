@@ -3,6 +3,14 @@ import { supabase } from '../supabaseClient'
 import { demoReports } from '../demoReports'
 import './AdminDashboard.css'
 import { useI18n } from '../i18n'
+import ReportLocationPopup from './ReportLocationPopup'
+import ReportProgressPopup from './ReportProgressPopup'
+import type { ProgressUpdate } from './ReportProgressPopup'
+import DepartmentSelect from './DepartmentSelect'
+
+const toDepartmentList = (value: unknown): string[] => (
+  Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : []
+)
 
 type AdminDashboardProps = {
   readOnlyDemo?: boolean
@@ -21,9 +29,20 @@ const statusLabels: Record<string, string> = {
   resolved: 'Resolved',
 }
 
+const formatDateTime = (value: unknown) => {
+  if (!value) return ''
+  const date = new Date(String(value))
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+}
+
 export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardProps) {
   const { t } = useI18n()
   const [reports, setReports] = useState<any[]>([])
+  const [mapReport, setMapReport] = useState<{ address: string; latitude: number; longitude: number } | null>(null)
+  const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([])
+  const [progressReportId, setProgressReportId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [requestStatus, setRequestStatus] = useState<'loading' | 'none' | 'pending' | 'error'>('loading')
@@ -59,8 +78,52 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
       setLoadError('Unable to load reports. Confirm that the reports RLS policies are installed and your municipal account is approved.')
     } else {
       setReports(data || [])
+      const { data: progressData, error: progressError } = await supabase
+        .from('report_progress_updates')
+        .select('id, report_id, author_email, note, status, created_at')
+        .order('created_at', { ascending: false })
+      if (progressError) {
+        console.error('Failed to load progress updates:', progressError)
+      } else {
+        setProgressUpdates(progressData || [])
+      }
     }
     setLoading(false)
+  }
+
+  const handleAddProgress = async (reportId: number, note: string) => {
+    if (!supabase) return
+    const { data: { user } } = await supabase.auth.getUser()
+    const report = reports.find((item) => item.id === reportId)
+    const { data, error } = await supabase
+      .from('report_progress_updates')
+      .insert({
+        report_id: reportId,
+        author_id: user?.id,
+        author_email: user?.email ?? null,
+        note,
+        status: report?.status ?? null,
+      })
+      .select('id, report_id, author_email, note, status, created_at')
+      .single()
+
+    if (error) {
+      console.error('Failed to add progress update:', error)
+      alert(t('Unable to update report: {message}', { message: error.message }))
+    } else if (data) {
+      setProgressUpdates((current) => [data, ...current])
+    }
+  }
+
+  const handleDeleteProgress = async (id: number) => {
+    if (!supabase) return
+    const { error } = await supabase.from('report_progress_updates').delete().eq('id', id)
+    if (error) {
+      console.error('Failed to delete progress update:', error)
+      alert(t('Unable to delete report: {message}', { message: error.message }))
+    } else {
+      setProgressUpdates((current) => current.filter((update) => update.id !== id))
+    }
   }
 
   useEffect(() => {
@@ -163,6 +226,21 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
     }
   }
 
+  const handleDepartmentChange = async (id: number, departments: string[]) => {
+    if (readOnlyDemo || !supabase) return
+    const { error } = await supabase
+      .from('reports')
+      .update({ department: departments })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Failed to update report departments:', error)
+      alert(t('Unable to update report: {message}', { message: error.message }))
+    } else {
+      fetchReports()
+    }
+  }
+
   // 3. 刪除通報
   const handleDelete = async (id: number) => {
     if (readOnlyDemo || !supabase) return
@@ -190,8 +268,6 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
     if (
       report.emergency_notification_needed === true
       || report.emergency_notification_needed === 'true'
-      || report.is_urgent_police === true
-      || report.is_urgent_police === 'true'
     ) counts.urgent += 1
 
     return counts
@@ -351,62 +427,112 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
               <table className="admin-report-table">
                 <thead>
                   <tr>
-                    <th>{t('ID')}</th>
-                    <th>{t('Time / Category')}</th>
-                    <th>{t('Reporter')}</th>
-                    <th>{t('Description')}</th>
-                    <th>{t('Status')}</th>
-                    <th>{t('Actions')}</th>
+                    <th>{t('Report')}</th>
+                    <th>{t('Category')}</th>
+                    <th>{t('Location')}</th>
+                    <th>{t('Description / Reporter')}</th>
+                    <th>{t('Status / Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reports.length === 0 ? (
                     <tr>
-                      <td className="admin-report-empty" colSpan={6}>{t('Currently, there are no citizen reports.')}</td>
+                      <td className="admin-report-empty" colSpan={5}>{t('Currently, there are no citizen reports.')}</td>
                     </tr>
                   ) : (
                     reports.map((report) => (
                       <tr key={report.id}>
-                        <td className="admin-report-id">#{report.id}</td>
-                        <td>
-                          <div className="admin-report-time">{t(String(report.time ?? ''))}</div>
-                          <div className="admin-report-category">{t(String(report.category ?? ''))}</div>
-                          {(report.emergency_notification_needed || report.is_urgent_police) && (
+                        <td className="admin-report-when">
+                          <div className="admin-report-id-row">
+                            <span className="admin-report-id">#{report.id}</span>
+                            {report.theme && <span className="admin-report-theme">{t(String(report.theme))}</span>}
+                          </div>
+                          <div className="admin-report-time">
+                            {t('Reported')}: {formatDateTime(report.report_time) || t(String(report.time ?? '')) || '—'}
+                          </div>
+                          {report.event_time && (
+                            <div className="admin-report-time">
+                              {t('Occurred')}: {formatDateTime(report.event_time)}
+                            </div>
+                          )}
+                          {report.emergency_notification_needed && (
                             <span className="admin-report-urgent">{t('Emergency notification needed')}</span>
                           )}
                         </td>
                         <td>
-                          <div>{t(String(report.name ?? ''))}</div>
-                          <div className="admin-report-phone">{report.phone}</div>
+                          <div className="admin-report-category">{t(String(report.category ?? '')) || '—'}</div>
+                          {readOnlyDemo ? (
+                            <div className="admin-report-time">{toDepartmentList(report.department).map((item) => t(item)).join(', ') || '—'}</div>
+                          ) : (
+                            <DepartmentSelect
+                              onChange={(departments) => handleDepartmentChange(report.id, departments)}
+                              value={toDepartmentList(report.department)}
+                            />
+                          )}
+                        </td>
+                        <td className="admin-report-location">
+                          {report.address && report.lat != null && report.lon != null ? (
+                            <button
+                              className="admin-report-location-link"
+                              onClick={() => setMapReport({
+                                address: report.address,
+                                latitude: Number(report.lat),
+                                longitude: Number(report.lon),
+                              })}
+                              title={t('Show on map')}
+                              type="button"
+                            >
+                              {report.address}
+                            </button>
+                          ) : (report.address || '—')}
                         </td>
                         <td className="admin-report-description">
                           {t(String(report.text ?? ''))}
+                          {report.additional_detail && (
+                            <div className="admin-report-extra">
+                              {t('Additional detail')}: {String(report.additional_detail)}
+                            </div>
+                          )}
+                          <div className="admin-report-reporter">
+                            {[report.name, report.phone, report.email].filter(Boolean).join(' · ')}
+                          </div>
                         </td>
-                        <td>
+                        <td className="admin-report-actions">
                           {readOnlyDemo ? (
                             <span className="demo-status">{t(statusLabels[report.status || 'pending'] ?? String(report.status))} · demo</span>
                           ) : (
-                            <select
-                              value={report.status || 'pending'}
-                              onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                            >
-                              <option value="pending">{t('Pending (Processing)')}</option>
-                              <option value="in-progress">{t('In Progress (In Progress)')}</option>
-                              <option value="resolved">{t('Resolved (Resolved)')}</option>
-                            </select>
-                          )}
-                        </td>
-                        <td>
-                          {readOnlyDemo
-                            ? <span className="demo-status">{t('No actions')}</span>
-                            : (
+                            <>
+                              <select
+                                value={report.status || 'pending'}
+                                onChange={(e) => handleStatusChange(report.id, e.target.value)}
+                              >
+                                <option value="pending">{t('Pending (Processing)')}</option>
+                                <option value="in-progress">{t('In Progress (In Progress)')}</option>
+                                <option value="resolved">{t('Resolved (Resolved)')}</option>
+                              </select>
+                              <div className="admin-report-progress">
+                                {(() => {
+                                  const latest = progressUpdates.find((update) => update.report_id === report.id)
+                                  return latest
+                                    ? <div className="admin-report-progress-latest" title={latest.note}>{latest.note}</div>
+                                    : <div className="admin-report-muted">{t('No progress updates yet.')}</div>
+                                })()}
+                                <button
+                                  className="admin-report-progress-button"
+                                  onClick={() => setProgressReportId(report.id)}
+                                  type="button"
+                                >
+                                  {t('Progress log')} ({progressUpdates.filter((update) => update.report_id === report.id).length})
+                                </button>
+                              </div>
                               <button
                                 className="admin-report-delete"
                                 onClick={() => handleDelete(report.id)}
                               >
                                 {t('Delete')}
                               </button>
-                            )}
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -417,6 +543,23 @@ export default function AdminDashboard({ readOnlyDemo = false }: AdminDashboardP
           </>
         )}
       </div>
+      {progressReportId !== null && (
+        <ReportProgressPopup
+          onAdd={(note) => handleAddProgress(progressReportId, note)}
+          onClose={() => setProgressReportId(null)}
+          onDelete={handleDeleteProgress}
+          reportId={progressReportId}
+          updates={progressUpdates.filter((update) => update.report_id === progressReportId)}
+        />
+      )}
+      {mapReport && (
+        <ReportLocationPopup
+          address={mapReport.address}
+          latitude={mapReport.latitude}
+          longitude={mapReport.longitude}
+          onClose={() => setMapReport(null)}
+        />
+      )}
     </div>
   )
 }

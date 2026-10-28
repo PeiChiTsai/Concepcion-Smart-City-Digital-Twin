@@ -20,12 +20,12 @@ type RetryRequest = {
 type ConversationStep = 'chat' | 'complete'
 
 type APIResult = {
+  theme?: string
   category?: string
   department?: string
-  responsible_department?: string
 
   address?: string
-  location_description?: string
+  location_description?: string // internal UI state only; not stored
   geocoded_address?: string
   coordinates?: {
     latitude: number
@@ -103,6 +103,9 @@ export default function CitizenReportChat() {
   // ==========================================
   // Report state
   // ==========================================
+
+  const [theme, setTheme] =
+    useState('')
 
   const [category, setCategory] =
     useState('')
@@ -349,6 +352,15 @@ export default function CitizenReportChat() {
       // Update report information
       // ======================================
 
+      if (result.theme) {
+
+        setTheme(
+          result.theme
+        )
+
+      }
+
+
       if (result.category) {
 
         setCategory(
@@ -361,7 +373,7 @@ export default function CitizenReportChat() {
       if (result.responsible_department || result.department) {
 
         setDepartment(
-          result.responsible_department || result.department || ''
+          result.department || ''
         )
 
       }
@@ -601,46 +613,33 @@ export default function CitizenReportChat() {
       if (sessionError) throw sessionError
       if (!session) throw new Error('Please sign in again before submitting your report.')
 
-      const citizenMessages = conversationHistory
-        .filter((message) => message.role === 'citizen')
-        .map((message) => String(message.content ?? '').trim())
-        .filter(Boolean)
-      const reportText = citizenMessages.length > 0
-        ? citizenMessages.join('\n\n')
-        : description.trim()
+      // Only the initial description; address, time and extra details have their own columns.
+      const reportText = description.trim()
       const address = location.trim()
       const reporterInfo = {
         name: contactName.trim() || 'Anonymous',
-        phone: contactPhone.trim() || 'N/A',
-        email: contactEmail.trim() || session.user.email || 'N/A',
+        phone: contactPhone.trim() || null,
+        email: contactEmail.trim() || session.user.email || null,
       }
-      const coordinates = { latitude, longitude }
 
       const { data, error } = await supabase
         .from('reports')
         .insert({
           user_id: session.user.id,
           ...reporterInfo,
-          reporter_info: reporterInfo,
+          theme: theme || null,
           category,
-          department: department || null,
-          responsible_department: department || null,
-          is_urgent_police: false,
+          department: department ? [department] : [],
           emergency_notification_needed: emergencyNotificationNeeded,
           emergency_notification_reason: emergencyNotificationReason || null,
           text: reportText,
-          details: reportText,
           address,
-          location_description: address,
           geocoded_address: currentResult?.geocoded_address || null,
-          coordinates,
           event_time: incidentTime || null,
-          incident_time: incidentTime || null,
           additional_detail: additionalDetail || null,
           lat: latitude,
           lon: longitude,
           status: 'pending',
-          time: new Date().toLocaleString(),
         })
         .select('id')
         .single()
@@ -689,6 +688,8 @@ export default function CitizenReportChat() {
 
 
     // Report information
+
+    setTheme('')
 
     setCategory('')
 

@@ -40,14 +40,68 @@ client = genai.Client(
 # ==========================================
 
 categories = pd.read_csv(
-    BACKEND_ROOT / "data" / "sav_categories.csv"
+    BACKEND_ROOT / "data" / "sav_categories_EN.csv",
+    skipinitialspace=True,
+)
+
+categories.columns = categories.columns.str.strip()
+
+# The ES file has the same rows in the same order as the EN file.
+categories_es = pd.read_csv(
+    BACKEND_ROOT / "data" / "sav_categories_ES.csv",
+    skipinitialspace=True,
+)
+
+categories_es.columns = ["theme", "category", "department"]
+
+if len(categories_es) != len(categories):
+
+    raise ValueError(
+        "sav_categories_ES.csv and sav_categories_EN.csv "
+        "must have the same number of rows."
+    )
+
+categories_es.index = categories["category"]
+
+
+def get_spanish_labels(category):
+
+    row = categories_es.loc[category]
+
+    return {
+        "theme_es": row["theme"],
+        "category_es": row["category"],
+        "department_es": row["department"],
+    }
+
+
+category_list = "\n\n".join(
+    f"Theme: {theme}\n"
+    + "\n".join(
+        f"- {category}"
+        for category in group["category"]
+    )
+    for theme, group in categories.groupby(
+        "Theme",
+        sort=False,
+    )
 )
 
 
-category_list = "\n".join(
-    f"- {category}"
-    for category in categories["category"]
-)
+def get_theme(category):
+
+    matching_category = categories[
+        categories["category"] == category
+    ]
+
+    if matching_category.empty:
+
+        raise ValueError(
+            f"Category '{category}' "
+            "was not found in SAV categories."
+        )
+
+    return matching_category.iloc[0]["Theme"]
 
 
 # ==========================================
@@ -487,8 +541,10 @@ If all required information has been provided:
     # Official department
     # ======================================
 
+    # Stored values stay in English; *_es fields are for Spanish display.
+    result.update(get_spanish_labels(result["category"]))
+    result["theme"] = get_theme(result["category"])
     result["department"] = get_department(result["category"])
-    result["responsible_department"] = result["department"]
 
     if current_result:
         for field in (

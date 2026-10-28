@@ -6,6 +6,7 @@ import type { ViewerMouseMoveEvent, ViewerClickEvent, Picked3DTilesFeature } fro
 import { supabase } from './supabaseClient'
 import { demoReports } from './demoReports'
 import { useI18n } from './i18n'
+import ReportTimeline, { getReportTimestamp, isInTimeRange, type TimeRange } from './ReportTimeline'
 import './TelluxMap.css'
 import reportedCases2023Url from '../../backend/data/2023-reported-cases.csv?url'
 import reportedCases2024Url from '../../backend/data/2024-reported-cases.csv?url'
@@ -76,9 +77,9 @@ const GOOGLE_MAPS_2D_SATELLITE_ASSET_ID = 3830182
 
 // ...exist
 const CAMERA_VIEW = {
-  latitude: -36.827063,
-  longitude: -73.050201,
-  height: 800,
+  latitude: -36.83224, 
+  longitude: -73.05164,
+  height: 1000,
   heading: 0,
   pitch: -45.00,
   roll: 0,
@@ -208,13 +209,19 @@ function getFeatureName(feature: Picked3DTilesFeature) {
   return `OSM building ID: ${feature.featureId ?? "unknown"}`
 }
 
+function formatPopupDateTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+}
+
 function normalizeReportStatus(status: unknown) {
   return String(status ?? 'pending').trim().toLowerCase().replace(/\s+/g, '-')
 }
 
 function getReportLayer(report: {
   status?: unknown
-  is_urgent_police?: unknown
   emergency_notification_needed?: unknown
 }): ReportLayer {
   const status = normalizeReportStatus(report.status)
@@ -223,8 +230,6 @@ function getReportLayer(report: {
   if (
     report.emergency_notification_needed === true
     || report.emergency_notification_needed === 'true'
-    || report.is_urgent_police === true
-    || report.is_urgent_police === 'true'
   ) return 'urgent'
   if (status === 'in-progress') return 'in-progress'
 
@@ -233,7 +238,6 @@ function getReportLayer(report: {
 
 function getReportColor(report: {
   status?: unknown
-  is_urgent_police?: unknown
   emergency_notification_needed?: unknown
 }) {
   const colors: Record<ReportLayer, string> = {
@@ -275,7 +279,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
-  const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer }>>([])
+  const reportEntitiesRef = useRef<Array<{ entity: any; layer: ReportLayer; timestamp: number | null }>>([])
+  const [reportTimeRange, setReportTimeRange] = useState<TimeRange | null>(null)
+  const reportTimeRangeRef = useRef<TimeRange | null>(null)
+  reportTimeRangeRef.current = reportTimeRange
   const [mapReports, setMapReports] = useState<any[]>([])
   const [historicalReportYear, setHistoricalReportYear] =
     useState<HistoricalReportYear>('2026')
@@ -335,10 +342,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
   useEffect(() => {
     reportLayerFiltersRef.current = reportLayerFilters
-    reportEntitiesRef.current.forEach(({ entity, layer }) => {
-      entity.show = reportLayerFilters[layer]
+    reportEntitiesRef.current.forEach(({ entity, layer, timestamp }) => {
+      entity.show = reportLayerFilters[layer] && isInTimeRange(timestamp, reportTimeRangeRef.current)
     })
-  }, [reportLayerFilters])
+  }, [reportLayerFilters, reportTimeRange])
 
   const toggleReportLayer = (layer: ReportLayer, checked: boolean) => {
     const nextFilters = { ...reportLayerFiltersRef.current, [layer]: checked }
@@ -372,9 +379,12 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
     useState<Picked3DTilesFeature | null>(null)
 
   const [popupReport, setPopupReport] = useState<{
+    id?: number | string
     text: string
     time: string
+    theme?: string
     category?: string
+    additionalDetail?: string
     emergencyNotificationNeeded?: boolean
     status?: string
     name?: string
@@ -382,7 +392,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
     email?: string
     address?: string
     eventTime?: string
-    department?: string
+    department?: string[] | string
     isPublic?: boolean
   } | null>(null)
 
@@ -558,15 +568,15 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
         // 繪製紅點
         const reportEntities: any[] = []
-        const categorizedReportEntities: Array<{ entity: any; layer: ReportLayer }> = []
-        let reports = readOnlyDemo && !publicReports ? demoReports : null
+        const categorizedReportEntities: Array<{ entity: any; layer: ReportLayer; timestamp: number | null }> = []
+        let reports: any[] | null = readOnlyDemo && !publicReports ? demoReports : null
         if (publicReports) {
           if (!supabase) {
             console.error('Supabase is not configured; public report markers cannot be loaded.')
           } else {
             const { data, error } = await supabase
               .from('public_report_map')
-              .select('id, category, status, lat, lon, address, event_time, report_time, responsible_department, emergency_notification_needed')
+              .select('id, theme, category, status, lat, lon, address, event_time, report_time, department, emergency_notification_needed')
             if (error) {
               console.error('Unable to load public report map data:', error)
             } else {
@@ -591,9 +601,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
         if (reports) {
           reports.forEach((report: any) => {
             const layer = getReportLayer(report)
+            const timestamp = getReportTimestamp(report)
             const entity = viewer.entities.add({
               id: `report-${report.id}`,
-              show: reportLayerFiltersRef.current[layer],
+              show: reportLayerFiltersRef.current[layer] && isInTimeRange(timestamp, reportTimeRangeRef.current),
               position: [report.lon, report.lat, 80],
               symbol: {
                 icon: {
@@ -614,14 +625,13 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 email: publicReports ? undefined : report.email,
                 address: report.address,
                 eventTime: report.event_time,
-                department: report.responsible_department || report.department,
+                department: report.department,
                 isPublic: publicReports,
                 emergencyNotificationNeeded: report.emergency_notification_needed
-                  || report.is_urgent_police
               }
             })
             reportEntities.push(entity)
-            categorizedReportEntities.push({ entity, layer })
+            categorizedReportEntities.push({ entity, layer, timestamp })
           })
         }
         reportEntitiesRef.current = categorizedReportEntities
@@ -768,18 +778,20 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
             if (targetReport) {
               setPopupReport({ 
-                text: targetReport.text || "無詳細內容", 
-                time: targetReport.report_time || targetReport.time || "未知時間",
+                id: targetReport.id,
+                text: targetReport.text || "",
+                time: targetReport.report_time || targetReport.time || "",
+                theme: targetReport.theme,
                 category: targetReport.category,
                 name: targetReport.name,
                 phone: targetReport.phone,
                 email: targetReport.email,
                 address: targetReport.address,
                 eventTime: targetReport.event_time,
-                department: targetReport.responsible_department || targetReport.department,
+                additionalDetail: targetReport.additional_detail,
+                department: targetReport.department,
                 isPublic: publicReports,
-                emergencyNotificationNeeded: targetReport.emergency_notification_needed
-                  || targetReport.is_urgent_police,
+                emergencyNotificationNeeded: targetReport.emergency_notification_needed,
                 status: targetReport.status
               })
               setPopupFeature(null) 
@@ -873,8 +885,6 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
       if (
         report.emergency_notification_needed === true
         || report.emergency_notification_needed === 'true'
-        || report.is_urgent_police === true
-        || report.is_urgent_police === 'true'
       ) counts.urgent += 1
       return counts
     },
@@ -1058,10 +1068,21 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               gap: "6px"
             }}
           >
-            {/* 類別 */}
+            {/* 主題 / 類別 */}
+            {popupReport.theme && (
+              <p style={{ margin: 0 }}>
+                <strong>{t('Theme:')}</strong> {t(popupReport.theme)}
+              </p>
+            )}
             <p style={{ margin: 0 }}>
-              <strong>{t('Category:')}</strong> {popupReport.category || t('N/A')}
+              <strong>{t('Category:')}</strong> {popupReport.category ? t(popupReport.category) : t('N/A')}
             </p>
+
+            {popupReport.department && [popupReport.department].flat().length > 0 && (
+              <p style={{ margin: 0 }}>
+                <strong>{t('Responsible department:')}</strong> {[popupReport.department].flat().map((item) => t(item)).join(', ')}
+              </p>
+            )}
 
             <p style={{ margin: 0 }}>
               <strong>{t('Status:')}</strong> {t(getReportStatusLabel(popupReport.status))}
@@ -1074,21 +1095,6 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               </p>
             )}
 
-            {/* 聯絡人資訊 */}
-            {!popupReport.isPublic && (
-              <>
-                <p style={{ margin: 0 }}>
-                  <strong>{t('Name:')}</strong> {popupReport.name || t('Anonymous')}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>{t('Phone:')}</strong> {popupReport.phone || t('N/A')}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>{t('Email:')}</strong> {popupReport.email || t('N/A')}
-                </p>
-              </>
-            )}
-
             {popupReport.address && (
               <p style={{ margin: 0 }}>
                 <strong>{t('Location:')}</strong> {popupReport.address}
@@ -1097,20 +1103,34 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
 
             {popupReport.eventTime && (
               <p style={{ margin: 0 }}>
-                <strong>{t('Event time:')}</strong> {popupReport.eventTime}
+                <strong>{t('Event time:')}</strong> {formatPopupDateTime(popupReport.eventTime)}
               </p>
             )}
 
-            {popupReport.department && (
+            {popupReport.time && (
               <p style={{ margin: 0 }}>
-                <strong>{t('Responsible department:')}</strong> {popupReport.department}
+                <strong>{t('Report Time:')}</strong> {formatPopupDateTime(popupReport.time)}
               </p>
             )}
 
-            <p style={{ margin: "4px 0" }}>
-              <strong>{t('Report Time:')}</strong>{" "}
-              {popupReport.time}
-            </p>
+            {/* 聯絡人資訊 */}
+            {!popupReport.isPublic && (
+              <>
+                <p style={{ margin: 0 }}>
+                  <strong>{t('Name:')}</strong> {popupReport.name || t('Anonymous')}
+                </p>
+                {popupReport.phone && (
+                  <p style={{ margin: 0 }}>
+                    <strong>{t('Phone:')}</strong> {popupReport.phone}
+                  </p>
+                )}
+                {popupReport.email && (
+                  <p style={{ margin: 0 }}>
+                    <strong>{t('Email:')}</strong> {popupReport.email}
+                  </p>
+                )}
+              </>
+            )}
 
             <p style={{ margin: "4px 0" }}>
               <strong>{t('Content:')}</strong>
@@ -1121,16 +1141,24 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
                 {t('Personal contact information and detailed descriptions are hidden in public view.')}
               </p>
             ) : (
-              <p
-                style={{
-                  margin: "4px 0",
-                  padding: "8px",
-                  background: "rgba(0,0,0,0.2)",
-                  borderRadius: "4px"
-                }}
-              >
-                {popupReport.text}
-              </p>
+              <>
+                <p
+                  style={{
+                    margin: "4px 0",
+                    padding: "8px",
+                    background: "rgba(0,0,0,0.2)",
+                    borderRadius: "4px",
+                    whiteSpace: "pre-wrap"
+                  }}
+                >
+                  {popupReport.text || t('N/A')}
+                </p>
+                {popupReport.additionalDetail && (
+                  <p style={{ margin: 0 }}>
+                    <strong>{t('Additional detail')}:</strong> {popupReport.additionalDetail}
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -1152,6 +1180,12 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
           </button>
         </div>
       )}
+
+      <ReportTimeline
+        left={16 + (isLayerPanelOpen ? layerPanelWidth : 48) + 12}
+        onRangeChange={setReportTimeRange}
+        reports={mapReports}
+      />
 
       <aside
         className={`report-layer-drawer${isLayerPanelOpen ? ' is-open' : ''}`}

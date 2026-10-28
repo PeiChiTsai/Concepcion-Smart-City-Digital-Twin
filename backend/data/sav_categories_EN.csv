@@ -1,0 +1,119 @@
+Theme,category,department
+Citizen Services,"Meeting Request, Contact, or Assistance",Municipal Administration
+Citizen Services,"Comment, Report, or General Inquiry",Municipal Administration
+Citizen Services,Inquiry,Municipal Administration
+Citizen Services,Referral and Correspondence Management,Municipal Administration
+Citizen Services,Compliment,Municipal Administration
+Citizen Services,Complaint,Municipal Administration
+Citizen Services,Appointment Booking / Guidance,Municipal Administration
+Citizen Services,"Response, Follow-Up, or Referral",Municipal Administration
+Citizen Services,Request,Municipal Administration
+Citizen Services,Multiple Requests or General Issue,Municipal Administration
+Citizen Services,Suggestion,Municipal Administration
+Citizen Services,Information Verification or Response,Municipal Administration
+Social Services and Benefits,Support for Affected People / Disaster Victims,Community Development Department
+Social Services and Benefits,Assistance to Disaster Victims,Community Development Department
+Social Services and Benefits,Social Assistance,Community Development Department
+Social Services and Benefits,Social Household Registry Inquiry,Community Development Department
+Social Services and Benefits,Social Guidance and Support,Community Development Department
+Social Services and Benefits,People Experiencing Homelessness,Community Development Department
+Social Services and Benefits,Older Adults / Disability,Community Development Department
+Social Services and Benefits,"Health, Pharmacy, and Medical Care",Community Development Department
+Social Services and Benefits,Family Subsidy,Community Development Department
+Sanitation and Waste,Garbage in Public Areas,Public Sanitation and Green Spaces Department
+Sanitation and Waste,Street Cleaning,Public Sanitation and Green Spaces Department
+Sanitation and Waste,"Cleaning of Channels, Septic Tanks, and Drains",Public Sanitation and Green Spaces Department
+Sanitation and Waste,Waste Management,Environment Department
+Sanitation and Waste,Illegal Dumping Site,Public Sanitation and Green Spaces Department
+Sanitation and Waste,Recycling Drop-Off Points and Recyclable Waste,Environment Department
+Sanitation and Waste,Waste Collection,Public Sanitation and Green Spaces Department
+Sanitation and Waste,Debris Removal,Public Sanitation and Green Spaces Department
+Sanitation and Waste,Request for a Waste Container,Public Sanitation and Green Spaces Department
+Enforcement and Community Affairs,Street Vending / Occupation of Public Space,Public Safety Department
+Enforcement and Community Affairs,Neighborhood Disputes / Mediation,Community Development Department
+Enforcement and Community Affairs,Report,Public Safety Department
+Enforcement and Community Affairs,Street Fairs and Public-Space Commerce,Public Safety Department
+Enforcement and Community Affairs,Building Inspection,Municipal Public Works Department
+Enforcement and Community Affairs,Business License Inspection,Finance Department
+Enforcement and Community Affairs,Inspection and Permits for Use of Public Space,Municipal Public Works Department
+Enforcement and Community Affairs,Advertising and Visual Pollution,Public Sanitation and Green Spaces Department
+Enforcement and Community Affairs,"Advertising, Graffiti, and Public Signage",Public Sanitation and Green Spaces Department
+Enforcement and Community Affairs,Noise Complaints,Public Safety Department
+Enforcement and Community Affairs,"Noise, Smoke, or Odor Complaints",Public Safety Department
+Enforcement and Community Affairs,Vacant Lot / Abandoned Property,Municipal Public Works Department
+Roads and Sidewalks,Roads and Carriageways in Poor Condition,Municipal Public Works Department
+Roads and Sidewalks,Bike Lanes and Active Mobility,Municipal Public Works Department
+Roads and Sidewalks,Road Pothole,Municipal Public Works Department
+Roads and Sidewalks,Roadworks / Unfinished Repairs,Municipal Public Works Department
+Roads and Sidewalks,"Bridges, Pedestrian Crossings, and Uneven Surfaces",Municipal Public Works Department
+Roads and Sidewalks,"Fences, Barriers, and Pedestrian Accessibility",Municipal Public Works Department
+Roads and Sidewalks,Fences and Safety Barriers,Municipal Public Works Department
+Roads and Sidewalks,"Curbs, Pavement, and Road Surfaces",Municipal Public Works Department
+Roads and Sidewalks,Sidewalk in Poor Condition,Municipal Public Works Department
+Municipal Procedures,"Certificates, Records, and Data Updates",Municipal Secretariat
+Municipal Procedures,"Documents, Certificates, and Procedures",Municipal Secretariat
+Municipal Procedures,Municipal Pharmacy and Services,Community Development Department
+Municipal Procedures,Municipal Payments and Charges,Finance Department
+Municipal Procedures,Vehicle Circulation Permit / Driver's License,Traffic and Public Transportation Department
+Municipal Procedures,Permits for Use of Public Space,Municipal Public Works Department
+Municipal Procedures,"Property Regulations, Records, and Information",Municipal Public Works Department
+"Trees, Green Spaces and Parks",Green Spaces and Plaza Furniture,Public Sanitation and Green Spaces Department
+"Trees, Green Spaces and Parks",Green Spaces / Park Facilities,Public Sanitation and Green Spaces Department
+"Trees, Green Spaces and Parks","Cleaning, Watering, and Maintenance of Green Spaces",Public Sanitation and Green Spaces Department
+"Trees, Green Spaces and Parks","Maintenance of Green Spaces, Plazas, and Parks",Public Sanitation and Green Spaces Department
+"Trees, Green Spaces and Parks",Park and Garden Maintenance and Cleaning,Public Sanitation and Green Spaces Department
+"Trees, Green Spaces and Parks",Tree Pruning,Public Sanitation and Green Spaces Department
+Traffic and Transportation,"Congestion, Speed, or Road Safety",Traffic and Public Transportation Department
+Traffic and Transportation,Vehicle Damage or Condition,Public Safety Department
+Traffic and Transportation,Enforcement of Illegally Parked Vehicles,Public Safety Department
+Traffic and Transportation,Parking Meters,Traffic and Public Transportation Department
+Traffic and Transportation,Public Transit Stop Issues,Traffic and Public Transportation Department
+Traffic and Transportation,Speed Humps and Pedestrian Crossings,Traffic and Public Transportation Department
+Traffic and Transportation,Traffic Lights in Poor Condition,Traffic and Public Transportation Department
+Traffic and Transportation,Request for Traffic Signs,Traffic and Public Transportation Department
+Traffic and Transportation,Freight and Service Vehicles,Traffic and Public Transportation Department
+Traffic and Transportation,Abandoned Vehicle on a Public Street,Public Safety Department
+Traffic and Transportation,Road Traffic and Circulation,Traffic and Public Transportation Department
+Pets and Animals,Animals in Public Areas,Environment Department
+Pets and Animals,Veterinary Care,Environment Department
+Pets and Animals,Responsible Pet Ownership,Environment Department
+"Water, Sewerage and Drainage",Water Leak,Municipal Public Works Department
+"Water, Sewerage and Drainage",Fire Hydrants and Water Network,Municipal Public Works Department
+"Water, Sewerage and Drainage",Sewerage Problem,Municipal Public Works Department
+"Water, Sewerage and Drainage","Grates, Storm Drains, and Standing Water",Municipal Public Works Department
+"Water, Sewerage and Drainage",Storm Drains in Poor Condition,Municipal Public Works Department
+"Water, Sewerage and Drainage",Utility or Drain Cover,Municipal Public Works Department
+"Community, Culture and Sports","Cultural, Religious, or Community Activities",Department of Culture
+"Community, Culture and Sports",Religious Affairs,Community Development Department
+"Community, Culture and Sports","Culture, Events, and Community Activities",Department of Culture
+"Community, Culture and Sports",Sports and Recreational Facilities,Community Development Department
+"Community, Culture and Sports",Sports and Community Organizations,Community Development Department
+"Community, Culture and Sports",Events and Community Participation,Department of Culture
+"Community, Culture and Sports",Neighborhood Organizations and Community Centers,Community Development Department
+Public Safety and Emergencies,"Landslide, Sinkhole, or Other Hazard",Disaster Risk Management Department
+Public Safety and Emergencies,Hazard from Covers or Loose Objects,Disaster Risk Management Department
+Public Safety and Emergencies,Police Protection / Neighborhood Alarms,Public Safety Department
+Public Safety and Emergencies,"Risk, Accident, or Emergency",Disaster Risk Management Department
+Public Safety and Emergencies,Public Safety / Surveillance,Public Safety Department
+Housing and Urban Planning,"Construction, Buildings, and Permits",Municipal Public Works Department
+Housing and Urban Planning,Neighborhood Improvements,Community Development Department
+Housing and Urban Planning,Urban Planning Regulations,Municipal Public Works Department
+Housing and Urban Planning,Urban Improvement Projects,Municipal Planning Secretariat
+Housing and Urban Planning,Sites and Land,Municipal Public Works Department
+Housing and Urban Planning,"Vacant Sites, Perimeter Fencing, and Properties",Municipal Public Works Department
+Housing and Urban Planning,"Urban Development, Plazas, and Improvement Projects",Municipal Planning Secretariat
+Street Lighting and Cabling,Cables or Poles on Public Streets,Municipal Public Works Department
+Street Lighting and Cabling,Streetlights in Poor Condition,Municipal Public Works Department
+Street Lighting and Cabling,"Poles, Lights, and Streetlights",Municipal Public Works Department
+Employment and Entrepreneurship,Training and Economic Development,Community Development Department
+Employment and Entrepreneurship,Resumes and Job Listings,Community Development Department
+Employment and Entrepreneurship,Economic Development,Community Development Department
+Employment and Entrepreneurship,Municipal Employment Office (OMIL),Community Development Department
+Pest and Sanitary Control,Fumigation / Sanitization,Environment Department
+Pest and Sanitary Control,Pest Control,Environment Department
+Municipal Facilities and Maintenance,Flags and Municipal Emblems,Administrative Management Department
+Municipal Facilities and Maintenance,Municipal Facilities and Equipment,Administrative Management Department
+Municipal Facilities and Maintenance,"Furniture, Buildings, and Municipal Fixtures",Administrative Management Department
+Digital Services and Communications,"Website, System, or Digital Service Issue",Information Technology Department
+Environment,Pollution and Environmental Protection,Environment Department
+Incomplete Information,Incomplete Report,Municipal Administration

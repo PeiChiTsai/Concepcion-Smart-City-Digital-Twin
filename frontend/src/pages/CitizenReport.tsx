@@ -262,15 +262,14 @@ export default function CitizenReport() {
     const newReport = {
       user_id: session.user.id,
       name: name || 'Anonymous',
-      phone: phone || 'N/A',
-      email: email || 'N/A',
+      phone: phone || null,
+      email: email || null,
       category: category,
-      is_urgent_police: isUrgentPolice,
+      emergency_notification_needed: isUrgentPolice,
       text: reportText,
       lat: latitude,
       lon: longitude,
       status: 'pending',
-      time: new Date().toLocaleString()
     }
 
     // send the report to Supabase cloud database
