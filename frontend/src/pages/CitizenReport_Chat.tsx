@@ -19,6 +19,22 @@ type RetryRequest = {
 
 type ConversationStep = 'chat' | 'complete'
 
+type AddressSource = 'device' | 'ai' | 'map'
+
+type MapPoint = {
+  latitude: number
+  longitude: number
+}
+
+type AiLocation = {
+  address: string
+  latitude: number | null
+  longitude: number | null
+}
+
+const formatPointAddress = (source: AddressSource, point: MapPoint) =>
+  `${source === 'device' ? 'Current location' : 'Selected on map'} (${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)})`
+
 type APIResult = {
   theme?: string
   category?: string
@@ -156,17 +172,50 @@ export default function CitizenReportChat() {
   const [currentResult, setCurrentResult] =
     useState<APIResult | null>(null)
 
+  // Address candidates: device GPS, the AI-identified place, and a point picked on the map.
+  const [addressSource, setAddressSource] =
+    useState<AddressSource | ''>('')
+
+  const [deviceLocation, setDeviceLocation] =
+    useState<MapPoint | null>(null)
+
+  const [mapLocation, setMapLocation] =
+    useState<MapPoint | null>(null)
+
+  const [aiLocation, setAiLocation] =
+    useState<AiLocation | null>(null)
+
+  // Once the user picks a source, AI results no longer replace the address.
+  const addressPinnedRef = useRef(false)
+  const aiLocationRef = useRef<AiLocation | null>(null)
+
+  const applyPoint = (source: AddressSource, point: MapPoint) => {
+    setAddressSource(source)
+    setLatitude(point.latitude)
+    setLongitude(point.longitude)
+    setLocation(formatPointAddress(source, point))
+  }
+
+  const applyAiLocation = (ai: AiLocation) => {
+    setAddressSource('ai')
+    setLocation(ai.address)
+    if (ai.latitude !== null) setLatitude(ai.latitude)
+    if (ai.longitude !== null) setLongitude(ai.longitude)
+  }
+
+  const handleAddressSourceChange = (source: AddressSource | '') => {
+    if (!source) return
+    addressPinnedRef.current = true
+    if (source === 'device' && deviceLocation) applyPoint('device', deviceLocation)
+    if (source === 'map' && mapLocation) applyPoint('map', mapLocation)
+    if (source === 'ai' && aiLocation) applyAiLocation(aiLocation)
+  }
+
   const handleMapLocationSelect = (selectedLatitude: number, selectedLongitude: number) => {
-    setLatitude(selectedLatitude)
-    setLongitude(selectedLongitude)
-    setLocation('')
-    setCurrentResult((current) => ({
-      ...current,
-      address: '',
-      location_description: 'Selected on map',
-      latitude: selectedLatitude,
-      longitude: selectedLongitude,
-    }))
+    const point = { latitude: selectedLatitude, longitude: selectedLongitude }
+    addressPinnedRef.current = true
+    setMapLocation(point)
+    applyPoint('map', point)
   }
 
   const handleDeviceLocationSelect = (
@@ -174,18 +223,14 @@ export default function CitizenReportChat() {
     selectedLongitude: number,
     isInitialLocation: boolean,
   ) => {
-    if (isInitialLocation && latitude !== null && longitude !== null) return
-
-    setLatitude(selectedLatitude)
-    setLongitude(selectedLongitude)
-    setLocation('')
-    setCurrentResult((current) => ({
-      ...current,
-      address: '',
-      location_description: 'Current device location',
-      latitude: selectedLatitude,
-      longitude: selectedLongitude,
-    }))
+    const point = { latitude: selectedLatitude, longitude: selectedLongitude }
+    setDeviceLocation(point)
+    if (isInitialLocation) {
+      if (addressPinnedRef.current || (latitude !== null && longitude !== null)) return
+    } else {
+      addressPinnedRef.current = true
+    }
+    applyPoint('device', point)
   }
 
 
@@ -379,33 +424,42 @@ export default function CitizenReportChat() {
       }
 
 
-      if (result.address || result.location_description) {
-
-        setLocation(
-          result.address || result.location_description || ''
-        )
-
-      }
-
-
       if (
-        result.latitude !== undefined
-      ) {
-
-        setLatitude(
-          result.latitude ?? null
-        )
-
-      }
-
-
-      if (
+        result.address ||
+        result.location_description ||
+        result.latitude !== undefined ||
         result.longitude !== undefined
       ) {
 
-        setLongitude(
-          result.longitude ?? null
-        )
+        const previousAi = aiLocationRef.current
+        const nextAi: AiLocation = {
+          address:
+            result.address ||
+            result.location_description ||
+            previousAi?.address ||
+            '',
+          latitude:
+            result.latitude !== undefined
+              ? result.latitude ?? null
+              : previousAi?.latitude ?? null,
+          longitude:
+            result.longitude !== undefined
+              ? result.longitude ?? null
+              : previousAi?.longitude ?? null,
+        }
+
+        aiLocationRef.current = nextAi
+        setAiLocation(nextAi)
+
+        const aiLocationChanged =
+          !previousAi ||
+          previousAi.address !== nextAi.address ||
+          previousAi.latitude !== nextAi.latitude ||
+          previousAi.longitude !== nextAi.longitude
+
+        if (nextAi.address && aiLocationChanged) {
+          applyAiLocation(nextAi)
+        }
 
       }
 
@@ -459,7 +513,7 @@ export default function CitizenReportChat() {
         !result.follow_up_question
 
       const completionMessage =
-        'Thank you for the information. Please submit your report using the button in the panel to the right.'
+        'Thank you for the information. Please submit your report using the button in the panel to the right. Should you have any further details to add, feel free to keep describing them.'
 
       const assistantResponse =
         result.follow_up_question ||
@@ -631,10 +685,12 @@ export default function CitizenReportChat() {
           category,
           department: department ? [department] : [],
           emergency_notification_needed: emergencyNotificationNeeded,
-          emergency_notification_reason: emergencyNotificationReason || null,
+          emergency_notification_reason: emergencyNotificationNeeded
+            ? emergencyNotificationReason || null
+            : null,
           text: reportText,
           address,
-          geocoded_address: currentResult?.geocoded_address || null,
+          geocoded_address: addressSource === 'ai' ? currentResult?.geocoded_address || null : null,
           event_time: incidentTime || null,
           additional_detail: additionalDetail || null,
           lat: latitude,
@@ -703,6 +759,13 @@ export default function CitizenReportChat() {
 
     setLongitude(null)
 
+    setAddressSource('')
+    setDeviceLocation(null)
+    setMapLocation(null)
+    setAiLocation(null)
+    aiLocationRef.current = null
+    addressPinnedRef.current = false
+
     setMissingInformation('')
 
     setIncidentTime('')
@@ -743,11 +806,9 @@ export default function CitizenReportChat() {
   // ==========================================
 
   const prompt =
-    step === 'complete'
-      ? t('Your report is ready')
-      : isLoading
-        ? t('AI is processing...')
-        : t('Describe the issue or answer the question...')
+    isLoading
+      ? t('AI is processing...')
+      : t('Describe the issue or answer the question...')
 
 
   // ==========================================
@@ -1199,7 +1260,6 @@ export default function CitizenReportChat() {
                 }
                 placeholder={prompt}
                 disabled={
-                  step === 'complete' ||
                   isLoading
                 }
                 autoComplete="off"
@@ -1210,7 +1270,6 @@ export default function CitizenReportChat() {
                 type="submit"
                 disabled={
                   !input.trim() ||
-                  step === 'complete' ||
                   isLoading
                 }
                 aria-label={t('Send message')}
@@ -1370,54 +1429,6 @@ export default function CitizenReportChat() {
 
 
 
-              {/* DEPARTMENT */}
-
-              <div
-                className="citizen-chat-summary-field"
-              >
-
-                <span
-                  className="citizen-chat-field-icon"
-                  aria-hidden="true"
-                >
-                  ▤
-                </span>
-
-
-                <div>
-
-                  <span
-                    className="citizen-chat-field-label"
-                  >
-                    {t('RESPONSIBLE DEPARTMENT')}
-                  </span>
-
-
-                  <p>
-                    {department ||
-                      t('Waiting for routing')}
-                  </p>
-
-                </div>
-
-
-                <span
-                  className={`citizen-chat-field-status ${
-                    department
-                      ? 'is-filled'
-                      : ''
-                  }`}
-                  aria-label={
-                    department
-                      ? t('Provided')
-                      : t('Not provided')
-                  }
-                />
-
-              </div>
-
-
-
               {/* WHAT HAPPENED */}
 
               <div
@@ -1441,10 +1452,13 @@ export default function CitizenReportChat() {
                   </span>
 
 
-                  <p>
-                    {description ||
-                      t('Waiting for details')}
-                  </p>
+                  <textarea
+                    className="citizen-chat-field-input"
+                    rows={3}
+                    value={description}
+                    placeholder={t('Waiting for details')}
+                    onChange={(event) => setDescription(event.target.value)}
+                  />
 
                 </div>
 
@@ -1489,6 +1503,17 @@ export default function CitizenReportChat() {
                   </span>
 
 
+                  <select
+                    className="citizen-chat-field-input"
+                    value={addressSource}
+                    onChange={(event) => handleAddressSourceChange(event.target.value as AddressSource | '')}
+                  >
+                    <option value="" disabled>{t('Choose an address source')}</option>
+                    <option value="device" disabled={!deviceLocation}>{t('Current location')}</option>
+                    <option value="ai" disabled={!aiLocation?.address}>{t('AI-identified location')}</option>
+                    <option value="map" disabled={!mapLocation}>{t('Selected on the map')}</option>
+                  </select>
+
                   <p>
                     {location ||
                       t('Waiting for location')}
@@ -1512,65 +1537,6 @@ export default function CitizenReportChat() {
 
               </div>
 
-
-
-              {/* COORDINATES */}
-
-              <div
-                className="citizen-chat-summary-field"
-              >
-
-                <span
-                  className="citizen-chat-field-icon"
-                  aria-hidden="true"
-                >
-                  ◎
-                </span>
-
-
-                <div>
-
-                  <span
-                    className="citizen-chat-field-label"
-                  >
-                    {t('COORDINATES')}
-                  </span>
-
-
-                  <p>
-
-                    {latitude !== null &&
-                      longitude !== null
-
-                      ? `${latitude.toFixed(
-                          6
-                        )}, ${longitude.toFixed(
-                          6
-                        )}`
-
-                      : t('Waiting for geolocation')}
-
-                  </p>
-
-                </div>
-
-
-                <span
-                  className={`citizen-chat-field-status ${
-                    latitude !== null &&
-                    longitude !== null
-                      ? 'is-filled'
-                      : ''
-                  }`}
-                  aria-label={
-                    latitude !== null &&
-                    longitude !== null
-                      ? t('Provided')
-                      : t('Not provided')
-                  }
-                />
-
-              </div>
 
 
 
@@ -1597,10 +1563,13 @@ export default function CitizenReportChat() {
                   </span>
 
 
-                  <p>
-                    {incidentTime ||
-                      t('Waiting for event time')}
-                  </p>
+                  <input
+                    className="citizen-chat-field-input"
+                    type="text"
+                    value={incidentTime}
+                    placeholder={t('Waiting for event time')}
+                    onChange={(event) => setIncidentTime(event.target.value)}
+                  />
 
                 </div>
 
@@ -1645,10 +1614,13 @@ export default function CitizenReportChat() {
                   </span>
 
 
-                  <p>
-                    {additionalDetail ||
-                      t('None provided')}
-                  </p>
+                  <textarea
+                    className="citizen-chat-field-input"
+                    rows={2}
+                    value={additionalDetail}
+                    placeholder={t('None provided')}
+                    onChange={(event) => setAdditionalDetail(event.target.value)}
+                  />
 
                 </div>
 
@@ -1672,13 +1644,23 @@ export default function CitizenReportChat() {
                 <span className="citizen-chat-field-icon" aria-hidden="true">!</span>
                 <div>
                   <span className="citizen-chat-field-label">{t('EMERGENCY NOTIFICATION')}</span>
-                  <p>
-                    {!emergencyAssessmentComplete
-                      ? t('Waiting for assessment')
-                      : emergencyNotificationNeeded
+                  <label className="citizen-chat-field-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={emergencyNotificationNeeded}
+                      onChange={(event) => {
+                        setEmergencyNotificationNeeded(event.target.checked)
+                        setEmergencyAssessmentComplete(true)
+                      }}
+                    />
+                    <span>
+                      {emergencyNotificationNeeded
                         ? `${t(emergencyNotificationReason || 'Immediate notification recommended')} · ${t('not sent')}`
-                        : t('Not required')}
-                  </p>
+                        : emergencyAssessmentComplete
+                          ? t('Not required')
+                          : t('Waiting for assessment')}
+                    </span>
+                  </label>
                 </div>
                 <span
                   className={`citizen-chat-field-status ${emergencyAssessmentComplete ? 'is-filled' : ''}`}

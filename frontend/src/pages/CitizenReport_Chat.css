@@ -153,6 +153,24 @@
   gap: 16px;
 }
 
+/* The right column sets the row height; the chat grows with its messages up to that height, then scrolls. */
+@media (min-width: 761px) {
+  .citizen-chat-main-column {
+    grid-template-rows: auto minmax(0, auto);
+    align-content: start;
+    contain: size;
+  }
+
+  .citizen-chat-main-column > .citizen-chat-card {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .citizen-chat-main-column .citizen-chat-messages {
+    min-height: 160px;
+  }
+}
+
 .citizen-chat-contact-card {
   padding: 18px 20px;
   border: 1px solid #e7ecea;
@@ -1157,6 +1175,43 @@
   border-radius: 3px;
   background: #f0f6f7;
   color: #31525f;
+}
+
+.citizen-chat-field-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 4px;
+  padding: 5px 7px;
+  border: 1px solid #cbdde1;
+  border-radius: 3px;
+  background: #fff;
+  color: #183746;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+textarea.citizen-chat-field-input {
+  resize: vertical;
+}
+
+.citizen-chat-field-input:focus {
+  border-color: #087f8c;
+  outline: none;
+}
+
+.citizen-chat-field-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #183746;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.citizen-chat-field-checkbox input {
+  margin-top: 3px;
 }
 
 .citizen-chat-summary-field p,

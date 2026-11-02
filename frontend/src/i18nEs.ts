@@ -286,6 +286,10 @@ export const es: Record<string, string> = {
   'Waiting for event time': 'Esperando la hora del suceso',
   'Waiting for geolocation': 'Esperando geolocalización',
   'Waiting for location': 'Esperando ubicación',
+  'Choose an address source': 'Elegir origen de la dirección',
+  'Current location': 'Ubicación actual',
+  'AI-identified location': 'Ubicación identificada por la IA',
+  'Selected on the map': 'Seleccionada en el mapa',
   'Waiting for routing': 'Esperando derivación',
   'Welcome back.': 'Bienvenido de nuevo.',
   'Welcome, neighbor.': 'Bienvenido, vecino.',
@@ -306,8 +310,8 @@ export const es: Record<string, string> = {
   // Strings held in state or thrown as errors, translated at render time
   'Hello! I\'ll help you prepare your report and gather any details still needed.':
     '¡Hola! Le ayudaré a preparar su reporte y a reunir los detalles que aún falten.',
-  'Thank you for the information. Please submit your report using the button in the panel to the right.':
-    'Gracias por la información. Envíe su reporte con el botón del panel de la derecha.',
+  'Thank you for the information. Please submit your report using the button in the panel to the right. Should you have any further details to add, feel free to keep describing them.':
+    'Gracias por la información. Envíe su reporte con el botón del panel de la derecha. Si desea añadir más detalles, puede seguir describiéndolos.',
   'Sorry, I could not process your report right now. Please try again.':
     'Lo siento, no pude procesar su reporte en este momento. Inténtelo de nuevo.',
   'Supabase is not configured. Add the project URL and anon key to frontend/.env.':
