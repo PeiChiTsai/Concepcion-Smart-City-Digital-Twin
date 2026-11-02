@@ -49,7 +49,10 @@ export default function ReportTimeline({ reports, left, onRangeChange }: ReportT
   }, [timestamps])
 
   const [range, setRange] = useState<TimeRange | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
+  // Phones start collapsed so the timeline does not cover the map.
+  const [collapsed, setCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 600px)').matches
+  )
 
   useEffect(() => {
     setRange(null)

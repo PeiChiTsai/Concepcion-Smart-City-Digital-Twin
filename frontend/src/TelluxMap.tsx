@@ -352,7 +352,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
     urgent: true
   })
   const reportLayerFiltersRef = useRef(reportLayerFilters)
-  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(true)
+  // On phones the panel starts collapsed so the map is usable immediately.
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(
+    () => typeof window === 'undefined' || !window.matchMedia('(max-width: 600px)').matches
+  )
   const [layerPanelWidth, setLayerPanelWidth] = useState(280)
 
   useEffect(() => {
@@ -1006,6 +1009,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
       {/* 建築物屬性面板 */}
       {popupFeature && (
         <div
+          className="map-popup"
           style={{
             position: "absolute",
             top: 20,
@@ -1080,6 +1084,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
       {/* 民眾通報面板 */}
       {popupReport && (!publicReports || popupReport.isPublic) && (
         <div
+          className="map-popup"
           style={{
             position: "absolute",
             top: 20,
@@ -1099,7 +1104,9 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             maxWidth: "calc(100vw - 40px)",
             maxHeight: "calc(100% - 40px)",
             boxSizing: "border-box",
-            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
             overflowWrap: "anywhere",
             zIndex: 1000,
             boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
@@ -1110,7 +1117,8 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               marginTop: 0,
               fontSize: "18px",
               borderBottom: "1px solid rgba(0,0,0,0.2)",
-              paddingBottom: "8px"
+              paddingBottom: "8px",
+              flexShrink: 0
             }}
           >
             🚨 {t('Citizen Reported Case')}
@@ -1122,7 +1130,10 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
               marginTop: "12px",
               display: "flex",
               flexDirection: "column",
-              gap: "6px"
+              gap: "6px",
+              flex: "1 1 auto",
+              minHeight: 0,
+              overflowY: "auto"
             }}
           >
             {/* 主題 / 類別 */}
@@ -1223,6 +1234,7 @@ export const TelluxMap: React.FC<TelluxMapProps> = ({
             onClick={() => setPopupReport(null)}
             style={{
               marginTop: "16px",
+              flexShrink: 0,
               width: "100%",
               padding: "8px",
               background: "rgba(255,255,255,0.9)",

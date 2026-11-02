@@ -17,7 +17,7 @@ export default function GovDashboard({
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       
       {/* 這是市府端的第二層頂部列 (Dashboard 標題) */}
-      <div style={{ 
+      <div className="gov-dashboard-bar" style={{ 
         background: '#1e293b', 
         color: 'white', 
         padding: '10px 20px', 
@@ -28,7 +28,7 @@ export default function GovDashboard({
       }}>
         
         {/* 用 span 把文字包起來，方便排版與調整字體 */}
-        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+        <span className="gov-dashboard-title" style={{ fontSize: '18px', fontWeight: 'bold' }}>
           {t('Concepcion Smart City Digital Twin Dashboard')}
           {publicReports ? ` · ${t('Public read-only')}` : readOnlyDemo ? ` · ${t('Read-only demo')}` : ''}
         </span>
