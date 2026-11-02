@@ -94,6 +94,9 @@ export default function CitizenReportChat() {
   const [hasStartedConversation, setHasStartedConversation] =
     useState(false)
 
+  const [isMobileChatOpen, setIsMobileChatOpen] =
+    useState(true)
+
   const [contactName, setContactName] =
     useState('')
 
@@ -629,6 +632,7 @@ export default function CitizenReportChat() {
     languageReferenceRef.current = initialDescription
     setDescription(initialDescription)
     setHasStartedConversation(true)
+    setIsMobileChatOpen(true)
     void sendMessage(initialDescription)
   }
 
@@ -736,6 +740,7 @@ export default function CitizenReportChat() {
     setIssueDraft('')
 
     setHasStartedConversation(false)
+    setIsMobileChatOpen(true)
 
     setIsLoading(false)
     setIsSubmittingReport(false)
@@ -789,6 +794,7 @@ export default function CitizenReportChat() {
       setIssueDraft(initialDescription)
       setDescription(initialDescription)
       setHasStartedConversation(true)
+      setIsMobileChatOpen(true)
       void sendMessage(initialDescription, true)
     }
   }
@@ -1001,9 +1007,10 @@ export default function CitizenReportChat() {
               </form>
             )}
 
-            {hasStartedConversation && (
+            {hasStartedConversation && isMobileChatOpen && (
             <section
               className="citizen-chat-card"
+              id="citizen-chat-assistant-window"
               aria-label={t('Citizen report conversation')}
             >
 
@@ -1055,6 +1062,18 @@ export default function CitizenReportChat() {
                 {t('Preview conversation')}
 
               </div>
+
+              <button
+                className="citizen-chat-mobile-toggle"
+                type="button"
+                onClick={() => setIsMobileChatOpen(false)}
+                aria-label={t('Minimize assistant chat')}
+                aria-controls="citizen-chat-assistant-window"
+                aria-expanded={isMobileChatOpen}
+                title={t('Minimize')}
+              >
+                −
+              </button>
 
             </div>
 
@@ -1296,6 +1315,21 @@ export default function CitizenReportChat() {
             </div>
 
             </section>
+            )}
+
+            {hasStartedConversation && !isMobileChatOpen && (
+              <button
+                className="citizen-chat-mobile-launcher"
+                type="button"
+                onClick={() => setIsMobileChatOpen(true)}
+                aria-controls="citizen-chat-assistant-window"
+                aria-expanded={isMobileChatOpen}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 5h16v12H9l-5 3V5Z" />
+                </svg>
+                {t('Open assistant chat')}
+              </button>
             )}
           </div>
 

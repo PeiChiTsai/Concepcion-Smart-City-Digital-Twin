@@ -94,6 +94,9 @@ export const es: Record<string, string> = {
   'Collapse timeline': 'Contraer línea de tiempo',
   'Collapse': 'Contraer',
   'Collapse report layers': 'Contraer capas de reportes',
+  'Minimize': 'Minimizar',
+  'Minimize assistant chat': 'Minimizar el chat del asistente',
+  'Open assistant chat': 'Abrir chat del asistente',
   'Complete the basic details above to enable submitting.': 'Complete los datos básicos de arriba para habilitar el envío.',
   'CONCEPCIÓN · CITIZEN SERVICES': 'CONCEPCIÓN · SERVICIOS CIUDADANOS',
   'CONCEPCIÓN · CITY OPERATIONS': 'CONCEPCIÓN · OPERACIONES DE LA CIUDAD',
@@ -360,4 +363,3 @@ export const es: Record<string, string> = {
   'in-progress': 'En curso',
   'resolved': 'Resuelto',
 }
-
