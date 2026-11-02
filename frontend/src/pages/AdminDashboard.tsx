@@ -8,9 +8,21 @@ import ReportProgressPopup from './ReportProgressPopup'
 import type { ProgressUpdate } from './ReportProgressPopup'
 import DepartmentSelect from './DepartmentSelect'
 
-const toDepartmentList = (value: unknown): string[] => (
-  Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : []
-)
+// Also unwraps JSON-encoded arrays (e.g. '["A"]') that may be stored as elements.
+const toDepartmentList = (value: unknown): string[] => {
+  const items = Array.isArray(value) ? value : value ? [value] : []
+  const result = items.flatMap((item): string[] => {
+    const text = String(item).trim()
+    if (text.startsWith('[') && text.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(text)
+        if (Array.isArray(parsed)) return toDepartmentList(parsed)
+      } catch { /* not JSON, keep as plain text */ }
+    }
+    return text ? [text] : []
+  })
+  return [...new Set(result)]
+}
 
 type AdminDashboardProps = {
   readOnlyDemo?: boolean
